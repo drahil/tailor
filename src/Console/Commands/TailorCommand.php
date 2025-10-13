@@ -7,6 +7,8 @@ namespace drahil\Tailor\Console\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Psy\Shell;
+use Psy\Configuration;
 
 class TailorCommand extends Command
 {
@@ -22,7 +24,12 @@ class TailorCommand extends Command
 
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        parent::execute($input, $output);
+        $config = new Configuration([
+            'startupMessage' => 'Welcome to Tailor!',
+        ]);
+
+        $shell = new Shell($config);
+        $shell->run();
 
         return Command::SUCCESS;
     }
