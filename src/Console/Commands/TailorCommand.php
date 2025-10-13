@@ -26,6 +26,7 @@ class TailorCommand extends Command
     {
         $config = new Configuration([
             'startupMessage' => 'Welcome to Tailor!',
+            'historyFile' => getcwd() . '/.tailor_history',
         ]);
 
         $shell = new Shell($config);
