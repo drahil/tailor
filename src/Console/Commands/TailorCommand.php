@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Console\Commands;
 
 use drahil\Tailor\PsySH\SessionListCommand;
+use drahil\Tailor\PsySH\SessionLoadCommand;
 use drahil\Tailor\PsySH\SessionSaveCommand;
 use drahil\Tailor\Support\SessionTracker;
 use drahil\Tailor\Support\SessionManager;
@@ -42,11 +43,11 @@ class TailorCommand extends Command
         $config->addCommands([
             new SessionListCommand(),
             new SessionSaveCommand(),
+            new SessionLoadCommand(),
         ]);
 
         $shell = new Shell($config);
 
-        // Mark the starting point of this session
         $this->markSessionStart();
 
         $this->hookSessionTracker($shell);
@@ -63,7 +64,6 @@ class TailorCommand extends Command
     {
         $historyFile = storage_path('tailor/tailor_history');
 
-        // Get current history size (number of lines)
         if (file_exists($historyFile)) {
             $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
             $startLine = count($lines);
@@ -71,13 +71,11 @@ class TailorCommand extends Command
             $startLine = 0;
         }
 
-        // Store the session start line in the tracker
         $this->sessionTracker->setSessionStartLine($startLine);
     }
 
     protected function hookSessionTracker(Shell $shell): void
     {
-        // Store tracker and manager in shell scope so commands can access them
         $shell->setScopeVariables([
             '__sessionTracker' => $this->sessionTracker,
             '__sessionManager' => $this->sessionManager,
@@ -92,6 +90,7 @@ class TailorCommand extends Command
 Available commands:
   session:list       List all saved sessions
   session:save       Save current session
+  session:load       Load a saved session
 
 Type 'help' for more commands
 MESSAGE;
