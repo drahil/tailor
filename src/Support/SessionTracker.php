@@ -113,7 +113,7 @@ class SessionTracker
     {
         $this->commands = [];
         $this->variables = [];
-        $this->startedAt = new \DateTime();
+        $this->startedAt = new DateTime();
     }
 
     /**

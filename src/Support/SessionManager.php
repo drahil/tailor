@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Support;
 
 use DateTime;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 
@@ -88,7 +89,7 @@ class SessionManager
      *
      * @param string $name
      * @return array
-     * @throws RuntimeException
+     * @throws RuntimeException|FileNotFoundException
      */
     public function load(string $name): array
     {
