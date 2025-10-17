@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace drahil\Tailor\Console\Commands;
 
 use drahil\Tailor\PsySH\SessionListCommand;
-use drahil\Tailor\PsySH\SessionLoadCommand;
+use drahil\Tailor\PsySH\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionSaveCommand;
+use drahil\Tailor\PsySH\SessionDeleteCommand;
 use drahil\Tailor\Support\SessionTracker;
 use drahil\Tailor\Support\SessionManager;
 use Symfony\Component\Console\Command\Command;
@@ -43,7 +44,8 @@ class TailorCommand extends Command
         $config->addCommands([
             new SessionListCommand(),
             new SessionSaveCommand(),
-            new SessionLoadCommand(),
+            new SessionExecuteCommand(),
+            new SessionDeleteCommand(),
         ]);
 
         $shell = new Shell($config);
@@ -90,7 +92,8 @@ class TailorCommand extends Command
 Available commands:
   session:list       List all saved sessions
   session:save       Save current session
-  session:load       Load a saved session
+  session:execute    Execute a saved session
+  session:delete     Delete a saved session
 
 Type 'help' for more commands
 MESSAGE;

@@ -6,13 +6,12 @@ namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\SessionTracker;
 use Exception;
-use Psy\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class SessionSaveCommand extends Command
+class SessionSaveCommand extends SessionCommand
 {
     protected function configure(): void
     {
@@ -63,7 +62,7 @@ class SessionSaveCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $sessionManager = $this->getApplication()->getScopeVariable('__sessionManager');
+        $sessionManager = $this->getSessionManager();
         $sessionTracker = $this->getApplication()->getScopeVariable('__sessionTracker');
 
         $this->captureHistoryToTracker($sessionTracker);
@@ -79,19 +78,16 @@ class SessionSaveCommand extends Command
             $output->writeln("<comment>Auto-generated session name: {$name}</comment>");
         }
 
-        if (! $this->isValidSessionName($name)) {
-            $output
-                ->writeln(
-                    '<error>Invalid session name. Use only alphanumeric characters, hyphens, and underscores.</error>'
-                );
+        if (! $this->validator->isValidName($name)) {
+            $output->writeln("<error>{$this->validator->getNameValidationMessage()}</error>");
             return 1;
         }
 
         $force = $input->getOption('force');
-        if ($sessionManager->exists($name) && ! $force) {
+        if ($this->sessionExists($name) && ! $force) {
             $output->writeln("<comment>Session '{$name}' already exists.</comment>");
 
-            if (! $this->confirmOverwrite($input, $output)) {
+            if (! $this->confirm($output, 'Overwrite existing session?')) {
                 $output->writeln('<info>Save cancelled.</info>');
                 return 0;
             }
@@ -121,38 +117,12 @@ class SessionSaveCommand extends Command
             }
 
             $output->writeln('');
-            $output->writeln("<comment>Load this session later with:</comment> session:load {$name}");
 
             return 0;
 
         } catch (Exception $e) {
-            $output->writeln("<error>Failed to save session: {$e->getMessage()}</error>");
-            return 1;
+            return $this->operationFailedError($output, 'save', $e->getMessage());
         }
-    }
-
-    /**
-     * Validate session name format
-     */
-    protected function isValidSessionName(string $name): bool
-    {
-        return preg_match('/^[a-zA-Z0-9_-]+$/', $name) === 1;
-    }
-
-    /**
-     * Ask user for confirmation to overwrite
-     */
-    protected function confirmOverwrite(InputInterface $input, OutputInterface $output): bool
-    {
-        $output->write('<question>Overwrite existing session? [y/N]</question> ');
-
-        $handle = fopen('php://stdin', 'r');
-        $line = fgets($handle);
-        fclose($handle);
-
-        $answer = trim(strtolower($line));
-
-        return in_array($answer, ['y', 'yes'], true);
     }
 
     /**
