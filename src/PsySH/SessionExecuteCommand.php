@@ -5,28 +5,28 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use Exception;
-use Psy\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class SessionLoadCommand extends Command
+class SessionExecuteCommand extends SessionCommand
 {
     protected function configure(): void
     {
         $this
-            ->setName('session:load')
-            ->setAliases(['load'])
-            ->setDescription('Load a previously saved Tailor session')
+            ->setName('session:execute')
+            ->setAliases(['exec'])
+            ->setDescription('Execute a previously saved Tailor session')
             ->setHelp(
                 <<<HELP
-  Load a previously saved Tailor session by name.
+  Execute a previously saved Tailor session by name.
+  This will load and automatically run all commands in the session.
   You can list available sessions with the 'session:list' command.
 
   Usage:
-    session:load my-session                   Load the session named 'my-session'
+    session:execute my-session                Execute the session named 'my-session'
   Examples:
-    >>> session:load my-session
+    >>> session:execute my-session
   HELP
             )
             ->addArgument(
@@ -38,24 +38,12 @@ class SessionLoadCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $sessionManager = $this->getApplication()->getScopeVariable('__sessionManager');
+        $sessionManager = $this->getSessionManager();
         $shell = $this->getApplication();
 
         $name = $input->getArgument('name');
-        if (! $name) {
-            $output
-                ->writeln(
-                    '<error>Name of the session must be provided.</error>'
-                );
 
-            return 1;
-        }
-
-        if (! $this->isValidSessionName($name)) {
-            $output
-                ->writeln(
-                    '<error>Invalid session name. Use only alphanumeric characters, hyphens, and underscores.</error>'
-                );
+        if (! $this->validateSessionName($name, $output)) {
             return 1;
         }
 
@@ -65,12 +53,12 @@ class SessionLoadCommand extends Command
             $commandCount = count($sessionData['commands'] ?? []);
 
             $output->writeln('');
-            $output->writeln("<info>✓ Session loaded successfully!</info>");
+            $output->writeln("<info>✓ Executing session...</info>");
             $output->writeln('');
             $output->writeln("  <fg=cyan>Name:</>        {$name}");
             $output->writeln("  <fg=cyan>Commands:</>    {$commandCount}");
 
-            if (!empty($sessionData['description'])) {
+            if (! empty($sessionData['description'])) {
                 $output->writeln("  <fg=cyan>Description:</> {$sessionData['description']}");
             }
 
@@ -118,16 +106,7 @@ class SessionLoadCommand extends Command
             return 0;
 
         } catch (Exception $e) {
-            $output->writeln("<error>Failed to load session: {$e->getMessage()}</error>");
-            return 1;
+            return $this->operationFailedError($output, 'load', $e->getMessage());
         }
-    }
-
-    /**
-     * Validate session name format
-     */
-    protected function isValidSessionName(string $name): bool
-    {
-        return preg_match('/^[a-zA-Z0-9_-]+$/', $name) === 1;
     }
 }

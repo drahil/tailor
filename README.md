@@ -40,7 +40,8 @@ php artisan tailor --session=my-work
 **Session Management:**
 ```bash
 session:save my-work    # Save current session
-session:load my-work    # Load a session
+session:execute my-work # Execute a saved session
+session:delete my-work  # Delete a saved session
 session:list            # List all sessions
 ```
 

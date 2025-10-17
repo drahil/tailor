@@ -47,7 +47,7 @@ class SessionManager
      * @param SessionTracker $tracker
      * @param array $metadata
      * @return void
-     * @throws RuntimeException
+     * @throws RuntimeException|FileNotFoundException
      */
     public function save(string $name, SessionTracker $tracker, array $metadata = []): void
     {
@@ -172,7 +172,7 @@ class SessionManager
      *
      * @param string $name
      * @return array
-     * @throws RuntimeException
+     * @throws RuntimeException|FileNotFoundException
      */
     public function getInfo(string $name): array
     {
@@ -209,16 +209,6 @@ class SessionManager
     }
 
     /**
-     * Get the storage path.
-     *
-     * @return string
-     */
-    public function getStoragePath(): string
-    {
-        return $this->storagePath;
-    }
-
-    /**
      * Get all session names.
      *
      * @return array
@@ -226,15 +216,5 @@ class SessionManager
     public function getSessionNames(): array
     {
         return array_column($this->list(), 'name');
-    }
-
-    /**
-     * Check if any sessions exist.
-     *
-     * @return bool
-     */
-    public function hasSessions(): bool
-    {
-        return count($this->getSessionNames()) > 0;
     }
 }
