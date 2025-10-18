@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\SessionManager;
+use drahil\Tailor\Support\Validation\ValidationException;
+use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -84,5 +86,56 @@ abstract class SessionCommand extends Command
         $answer = trim(strtolower($line));
 
         return in_array($answer, ['y', 'yes'], true);
+    }
+
+    /**
+     * Validate and retrieve session name from input.
+     *
+     * Handles validation and outputs appropriate error messages.
+     * Returns null if validation fails (caller should return 1).
+     *
+     * @param string|null $nameInput The raw session name input
+     * @param OutputInterface $output The output interface for error messages
+     * @param bool $required Whether the name is required (true) or optional (false)
+     * @return SessionName|null The validated session name, or null on validation failure
+     */
+    protected function validateSessionName(
+        ?string $nameInput,
+        OutputInterface $output,
+        bool $required = true
+    ): ?SessionName {
+        try {
+            $sessionName = $required
+                ? SessionName::from($nameInput)
+                : SessionName::fromNullable($nameInput);
+
+            if (! $sessionName && $required) {
+                $output->writeln('<error>Session name must be provided.</error>');
+                return null;
+            }
+
+            return $sessionName;
+        } catch (ValidationException $e) {
+            $output->writeln("<error>{$e->result->firstError()}</error>");
+            return null;
+        }
+    }
+
+    /**
+     * Decode command code from storage format.
+     *
+     * Handles URL encoding and escape sequences used in history storage.
+     *
+     * @param string $code The encoded command code
+     * @return string The decoded command code
+     */
+    protected function decodeCommandCode(string $code): string
+    {
+        if (str_contains($code, '\\0') || str_contains($code, '\\1')) {
+            return stripcslashes($code);
+        }
+
+        $decoded = urldecode($code);
+        return $decoded !== $code ? $decoded : $code;
     }
 }

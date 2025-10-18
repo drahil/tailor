@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
-use drahil\Tailor\Support\Validation\ValidationException;
-use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -51,13 +49,10 @@ class SessionDeleteCommand extends SessionCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $sessionManager = $this->getSessionManager();
-
         $nameInput = $input->getArgument('name');
 
-        try {
-            $sessionName = SessionName::from($nameInput);
-        } catch (ValidationException $e) {
-            $output->writeln("<error>{$e->result->firstError()}</error>");
+        $sessionName = $this->validateSessionName($nameInput, $output);
+        if (! $sessionName) {
             return 1;
         }
 
