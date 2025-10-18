@@ -9,6 +9,8 @@ use drahil\Tailor\PsySH\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionSaveCommand;
 use drahil\Tailor\PsySH\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionViewCommand;
+use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
+use drahil\Tailor\Support\HistoryCaptureService;
 use drahil\Tailor\Support\SessionTracker;
 use drahil\Tailor\Support\SessionManager;
 use Symfony\Component\Console\Command\Command;
@@ -42,12 +44,14 @@ class TailorCommand extends Command
             'historyFile' => storage_path('tailor/tailor_history'),
         ]);
 
+        $formatter = app(SessionOutputFormatter::class);
+
         $config->addCommands([
             new SessionListCommand(),
-            new SessionSaveCommand(),
-            new SessionExecuteCommand(),
+            new SessionSaveCommand(app(HistoryCaptureService::class), $formatter),
+            new SessionExecuteCommand($formatter),
             new SessionDeleteCommand(),
-            new SessionViewCommand(),
+            new SessionViewCommand($formatter),
         ]);
 
         $shell = new Shell($config);
