@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
+use drahil\Tailor\Support\Validation\ValidationException;
+use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -50,29 +52,32 @@ class SessionDeleteCommand extends SessionCommand
     {
         $sessionManager = $this->getSessionManager();
 
-        $name = $input->getArgument('name');
+        $nameInput = $input->getArgument('name');
 
-        if (! $this->validateSessionName($name, $output)) {
+        try {
+            $sessionName = SessionName::from($nameInput);
+        } catch (ValidationException $e) {
+            $output->writeln("<error>{$e->result->firstError()}</error>");
             return 1;
         }
 
-        if (! $this->sessionExists($name)) {
-            return $this->sessionNotFoundError($output, $name);
+        if (! $this->sessionExists($sessionName->toString())) {
+            return $this->sessionNotFoundError($output, (string) $sessionName);
         }
 
         $force = $input->getOption('force');
         if (! $force) {
-            if (! $this->confirm($output, "Are you sure you want to delete session '{$name}'?")) {
+            if (! $this->confirm($output, "Are you sure you want to delete session '{$sessionName}'?")) {
                 $output->writeln('<info>Delete cancelled.</info>');
                 return 0;
             }
         }
 
         try {
-            $sessionManager->delete($name);
+            $sessionManager->delete($sessionName);
 
             $output->writeln('');
-            $output->writeln("<info>✓ Session '{$name}' deleted successfully!</info>");
+            $output->writeln("<info>✓ Session '{$sessionName}' deleted successfully!</info>");
             $output->writeln('');
 
             return 0;

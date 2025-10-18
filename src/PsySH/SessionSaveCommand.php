@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
+use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\SessionTracker;
+use drahil\Tailor\Support\Validation\ValidationException;
+use drahil\Tailor\Support\ValueObjects\SessionDescription;
+use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,14 +17,16 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SessionSaveCommand extends SessionCommand
 {
+    /**
+     * Configure the command.
+     */
     protected function configure(): void
     {
         $this
             ->setName('session:save')
-            ->setAliases(['save'])
             ->setDescription('Save the current session')
-            ->setHelp(
-                <<<HELP
+            ->setAliases(['save'])
+            ->setHelp(<<<HELP
   Save the current Tailor session with all executed commands.
 
   Usage:
@@ -34,7 +40,7 @@ class SessionSaveCommand extends SessionCommand
     >>> session:save redis-test --force
     >>> session:save api-debugging -d "Testing API endpoints"
   HELP
-            )
+)
             ->addArgument(
                 'name',
                 InputArgument::OPTIONAL,
@@ -72,20 +78,22 @@ class SessionSaveCommand extends SessionCommand
             return 1;
         }
 
-        $name = $input->getArgument('name');
-        if (! $name) {
-            $name = 'session-' . date('Y-m-d-His');
-            $output->writeln("<comment>Auto-generated session name: {$name}</comment>");
+        $nameInput = $input->getArgument('name');
+        if (! $nameInput) {
+            $nameInput = 'session-' . date('Y-m-d-His');
+            $output->writeln("<comment>Auto-generated session name: {$nameInput}</comment>");
         }
 
-        if (! $this->validator->isValidName($name)) {
-            $output->writeln("<error>{$this->validator->getNameValidationMessage()}</error>");
+        try {
+            $sessionName = SessionName::from($nameInput);
+        } catch (ValidationException $e) {
+            $output->writeln("<error>{$e->result->firstError()}</error>");
             return 1;
         }
 
         $force = $input->getOption('force');
-        if ($this->sessionExists($name) && ! $force) {
-            $output->writeln("<comment>Session '{$name}' already exists.</comment>");
+        if ($this->sessionExists($sessionName->toString()) && ! $force) {
+            $output->writeln("<comment>Session '{$sessionName}' already exists.</comment>");
 
             if (! $this->confirm($output, 'Overwrite existing session?')) {
                 $output->writeln('<info>Save cancelled.</info>');
@@ -93,27 +101,28 @@ class SessionSaveCommand extends SessionCommand
             }
         }
 
-        $metadata = [
-            'description' => $input->getOption('description'),
-            'tags' => $input->getOption('tags') ?? [],
-        ];
+        $metadata = new SessionMetadata(
+            name: $sessionName,
+            description: SessionDescription::fromNullable($input->getOption('description')),
+            tags: $input->getOption('tags') ?? [],
+        );
 
         try {
-            $sessionManager->save($name, $sessionTracker, $metadata);
+            $sessionManager->save($metadata, $sessionTracker);
 
             $commandCount = $sessionTracker->getCommandCount();
             $output->writeln('');
             $output->writeln("<info>✓ Session saved successfully!</info>");
             $output->writeln('');
-            $output->writeln("  <fg=cyan>Name:</>        {$name}");
+            $output->writeln("  <fg=cyan>Name:</>        {$sessionName}");
             $output->writeln("  <fg=cyan>Commands:</>    {$commandCount}");
 
-            if ($metadata['description']) {
-                $output->writeln("  <fg=cyan>Description:</> {$metadata['description']}");
+            if ($metadata->hasDescription()) {
+                $output->writeln("  <fg=cyan>Description:</> {$metadata->description}");
             }
 
-            if (! empty($metadata['tags'])) {
-                $output->writeln("  <fg=cyan>Tags:</>        " . implode(', ', $metadata['tags']));
+            if ($metadata->hasTags()) {
+                $output->writeln("  <fg=cyan>Tags:</>        " . implode(', ', $metadata->tags));
             }
 
             $output->writeln('');
