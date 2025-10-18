@@ -16,8 +16,8 @@ final readonly class SessionData
 {
     /**
      * @param SessionMetadata $metadata
-     * @param array<array{code: string, output: mixed, timestamp: string, order: int}> $commands
-     * @param array $variables
+     * @param array<int, array{code: string, output: string|null, timestamp: string, order: int}> $commands
+     * @param array<string, array{type: string, class: string|null, value: string|null}> $variables
      * @param array{total_commands: int, duration_seconds: float, project_path: string, started_at: string|null} $sessionMetadata
      */
     public function __construct(
@@ -49,6 +49,8 @@ final readonly class SessionData
 
     /**
      * Create SessionData from array data (e.g., loaded from JSON).
+     *
+     * @param array<string, mixed> $data
      * @throws Exception
      */
     public static function fromArray(array $data): self
@@ -65,6 +67,8 @@ final readonly class SessionData
 
     /**
      * Convert to array for storage/serialization.
+     *
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {

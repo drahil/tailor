@@ -15,14 +15,14 @@ class SessionTracker
     /**
      * Commands executed in the current session.
      *
-     * @var array
+     * @var array<int, array{code: string, output: string|null, timestamp: string, order: int}>
      */
     protected array $commands = [];
 
     /**
      * Variables in the current scope.
      *
-     * @var array
+     * @var array<string, array{type: string, class: string|null, value: string|null}>
      */
     protected array $variables = [];
 
@@ -89,7 +89,7 @@ class SessionTracker
     /**
      * Get all tracked commands.
      *
-     * @return array
+     * @return array<int, array{code: string, output: string|null, timestamp: string, order: int}>
      */
     public function getCommands(): array
     {
@@ -121,7 +121,7 @@ class SessionTracker
     /**
      * Load commands from an array (used when restoring a session).
      *
-     * @param array $commands
+     * @param array<int, array{code: string, output: string|null, timestamp: string, order: int}> $commands
      * @return void
      */
     public function loadCommands(array $commands): void
@@ -144,7 +144,7 @@ class SessionTracker
     /**
      * Get all tracked variables.
      *
-     * @return array
+     * @return array<string, array{type: string, class: string|null, value: string|null}>
      */
     public function getVariables(): array
     {
@@ -209,7 +209,7 @@ class SessionTracker
      * Serialize a variable for storage.
      *
      * @param mixed $value
-     * @return array
+     * @return array{type: string, class: string|null, value: string|null}
      */
     protected function serializeVariable(mixed $value): array
     {
@@ -233,7 +233,7 @@ class SessionTracker
     /**
      * Get the last executed command.
      *
-     * @return array|null
+     * @return array{code: string, output: string|null, timestamp: string, order: int}|null
      */
     public function getLastCommand(): ?array
     {

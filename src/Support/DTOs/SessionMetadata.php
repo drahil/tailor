@@ -37,6 +37,8 @@ final readonly class SessionMetadata
 
     /**
      * Create SessionMetadata from array data (e.g., from JSON).
+     *
+     * @param array<string, mixed> $data
      * @throws Exception
      */
     public static function fromArray(array $data): self
@@ -58,6 +60,8 @@ final readonly class SessionMetadata
 
     /**
      * Convert to array for storage/serialization.
+     *
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {

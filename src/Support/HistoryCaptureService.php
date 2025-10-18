@@ -65,7 +65,7 @@ class HistoryCaptureService
      *
      * @param string $historyFile
      * @param int $startLine
-     * @return array<string>
+     * @return array<int, string>
      */
     public function captureFromLine(string $historyFile, int $startLine): array
     {
