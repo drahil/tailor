@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
+use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -11,6 +12,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SessionExecuteCommand extends SessionCommand
 {
+    public function __construct(
+        private readonly SessionOutputFormatter $formatter
+    ) {
+        parent::__construct();
+    }
     protected function configure(): void
     {
         $this
@@ -50,19 +56,7 @@ class SessionExecuteCommand extends SessionCommand
         try {
             $sessionData = $sessionManager->load($sessionName);
 
-            $commandCount = $sessionData->getCommandCount();
-
-            $output->writeln('');
-            $output->writeln("<info>✓ Executing session...</info>");
-            $output->writeln('');
-            $output->writeln("  <fg=cyan>Name:</>        {$sessionData->metadata->name}");
-            $output->writeln("  <fg=cyan>Commands:</>    {$commandCount}");
-
-            if ($sessionData->metadata->hasDescription()) {
-                $output->writeln("  <fg=cyan>Description:</> {$sessionData->metadata->description}");
-            }
-
-            $output->writeln('');
+            $this->formatter->displayExecutionHeader($output, $sessionData);
 
             $executedCount = 0;
             $failedCount = 0;

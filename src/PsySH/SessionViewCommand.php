@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\DTOs\SessionData;
-use drahil\Tailor\Support\VariableFormatter;
+use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,6 +13,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SessionViewCommand extends SessionCommand
 {
+    public function __construct(
+        private readonly SessionOutputFormatter $formatter
+    ) {
+        parent::__construct();
+    }
     protected function configure(): void
     {
         $this
@@ -55,20 +60,7 @@ class SessionViewCommand extends SessionCommand
         try {
             $sessionData = $sessionManager->load($sessionName);
 
-            $output->writeln('');
-            $output->writeln("<info>Session: {$sessionData->metadata->name}</info>");
-            $output->writeln('');
-
-            $this->displayMetadata($output, $sessionData);
-            $output->writeln('');
-
-            $this->displayCommands($output, $sessionData);
-            $output->writeln('');
-
-            if ($sessionData->hasVariables() && count($sessionData->variables) > 0) {
-                $this->displayVariables($output, $sessionData);
-                $output->writeln('');
-            }
+            $this->displaySessionData($sessionData, $output);
 
             return 0;
 
@@ -77,84 +69,21 @@ class SessionViewCommand extends SessionCommand
         }
     }
 
-    protected function displayMetadata(OutputInterface $output, SessionData $sessionData): void
+    private function displaySessionData(SessionData $sessionData, OutputInterface $output): void
     {
-        $metadata = $sessionData->metadata;
-        $sessionMeta = $sessionData->sessionMetadata;
-
-        $output->writeln('<fg=yellow>Metadata:</>');
+        $output->writeln('');
+        $output->writeln("<info>Session: {$sessionData->metadata->name}</info>");
         $output->writeln('');
 
-        if ($metadata->hasDescription()) {
-            $output->writeln("  <fg=cyan>Description:</>  {$metadata->description}");
-        }
-
-        if ($metadata->hasTags()) {
-            $output->writeln("  <fg=cyan>Tags:</>         " . implode(', ', $metadata->tags));
-        }
-
-        $output->writeln("  <fg=cyan>Commands:</>     {$sessionData->getCommandCount()}");
-
-        if (isset($sessionMeta['project_path'])) {
-            $output->writeln("  <fg=cyan>Project:</>      {$sessionMeta['project_path']}");
-        }
-
-        if ($metadata->createdAt) {
-            $output->writeln("  <fg=cyan>Created:</>      {$metadata->createdAt->format('Y-m-d H:i:s')}");
-        }
-
-        if ($metadata->updatedAt) {
-            $output->writeln("  <fg=cyan>Updated:</>      {$metadata->updatedAt->format('Y-m-d H:i:s')}");
-        }
-
-        if ($metadata->laravelVersion) {
-            $output->writeln("  <fg=cyan>Laravel:</>      {$metadata->laravelVersion}");
-        }
-
-        if ($metadata->phpVersion) {
-            $output->writeln("  <fg=cyan>PHP:</>          {$metadata->phpVersion}");
-        }
-
-        if (isset($sessionMeta['duration_seconds'])) {
-            $duration = round($sessionMeta['duration_seconds'], 2);
-            $output->writeln("  <fg=cyan>Duration:</>     {$duration}s");
-        }
-    }
-
-    protected function displayCommands(OutputInterface $output, SessionData $sessionData): void
-    {
-        $commandCount = $sessionData->getCommandCount();
-        $output->writeln("<fg=yellow>Commands:</> <fg=gray>({$commandCount} total)</>");
+        $this->formatter->displayMetadata($output, $sessionData);
         $output->writeln('');
 
-        if (! $sessionData->hasCommands()) {
-            $output->writeln('  <comment>No commands recorded</comment>');
-            return;
-        }
-
-        $output->writeln('<fg=gray>─────────────────────────────────────────────────────────────────────────────────</>');
-
-        foreach ($sessionData->commands as $command) {
-            $code = $this->decodeCommandCode($command['code']);
-
-            if ($code === '_HiStOrY_V2_') {
-                continue;
-            }
-
-            $output->writeln($code);
-        }
-
-        $output->writeln('<fg=gray>─────────────────────────────────────────────────────────────────────────────────</>');
-    }
-
-    protected function displayVariables(OutputInterface $output, $sessionData): void
-    {
-        $output->writeln('<fg=yellow>Variables:</>');
+        $this->formatter->displayCommands($output, $sessionData, fn($code) => $this->decodeCommandCode($code));
         $output->writeln('');
 
-        foreach ($sessionData->variables as $name => $value) {
-            $valueStr = VariableFormatter::format($value);
-            $output->writeln("  <fg=cyan>\${$name}</>  =  {$valueStr}");
+        if ($sessionData->hasVariables() && count($sessionData->variables) > 0) {
+            $this->formatter->displayVariables($output, $sessionData->variables);
+            $output->writeln('');
         }
     }
 }

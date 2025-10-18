@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\DTOs\SessionMetadata;
+use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
+use drahil\Tailor\Support\HistoryCaptureService;
 use drahil\Tailor\Support\SessionTracker;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionDescription;
@@ -17,6 +19,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SessionSaveCommand extends SessionCommand
 {
+    public function __construct(
+        private readonly HistoryCaptureService $historyCaptureService,
+        private readonly SessionOutputFormatter $formatter
+    ) {
+        parent::__construct();
+    }
     /**
      * Configure the command.
      */
@@ -71,7 +79,8 @@ class SessionSaveCommand extends SessionCommand
         $sessionManager = $this->getSessionManager();
         $sessionTracker = $this->getApplication()->getScopeVariable('__sessionTracker');
 
-        $this->captureHistoryToTracker($sessionTracker);
+        $historyFile = storage_path('tailor/tailor_history');
+        $this->historyCaptureService->captureHistoryToTracker($sessionTracker, $historyFile);
 
         if ($sessionTracker->getCommandCount() === 0) {
             $output->writeln('<comment>No commands to save. Execute some commands first.</comment>');
@@ -110,87 +119,18 @@ class SessionSaveCommand extends SessionCommand
         try {
             $sessionManager->save($metadata, $sessionTracker);
 
-            $commandCount = $sessionTracker->getCommandCount();
-            $output->writeln('');
-            $output->writeln("<info>✓ Session saved successfully!</info>");
-            $output->writeln('');
-            $output->writeln("  <fg=cyan>Name:</>        {$sessionName}");
-            $output->writeln("  <fg=cyan>Commands:</>    {$commandCount}");
-
-            if ($metadata->hasDescription()) {
-                $output->writeln("  <fg=cyan>Description:</> {$metadata->description}");
-            }
-
-            if ($metadata->hasTags()) {
-                $output->writeln("  <fg=cyan>Tags:</>        " . implode(', ', $metadata->tags));
-            }
-
-            $output->writeln('');
+            $this->formatter->displaySaveSummary(
+                $output,
+                $sessionName->toString(),
+                $sessionTracker->getCommandCount(),
+                $metadata->description?->toString(),
+                $metadata->tags
+            );
 
             return 0;
 
         } catch (Exception $e) {
             return $this->operationFailedError($output, 'save', $e->getMessage());
         }
-    }
-
-    /**
-     * Capture commands from PsySH history and add them to SessionTracker
-     */
-    protected function captureHistoryToTracker(SessionTracker $tracker): void
-    {
-        $tracker->clear();
-
-        $historyFile = storage_path('tailor/tailor_history');
-
-        if (! file_exists($historyFile)) {
-            return;
-        }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-            return;
-        }
-
-        $sessionStartLine = $tracker->getSessionStartLine();
-
-        $currentSessionLines = array_slice($lines, $sessionStartLine);
-
-        foreach ($currentSessionLines as $entry) {
-            $entry = trim($entry);
-
-            if (empty($entry)) {
-                continue;
-            }
-
-            if ($this->shouldSkipCommand($entry)) {
-                continue;
-            }
-
-            $tracker->addCommand($entry);
-        }
-    }
-
-    /**
-     * Check if a command should be skipped (internal commands)
-     */
-    protected function shouldSkipCommand(string $command): bool
-    {
-        $skipPatterns = [
-            '/^session:/',
-            '/^help\b/',
-            '/^exit\b/',
-            '/^quit\b/',
-            '/^history\b/',
-            '/^clear\b/',
-        ];
-
-        foreach ($skipPatterns as $pattern) {
-            if (preg_match($pattern, trim($command))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
