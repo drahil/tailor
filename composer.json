@@ -16,7 +16,8 @@
         "psy/psysh": "^0.12.12"
     },
     "require-dev": {
-        "pestphp/pest": "^2.0"
+        "pestphp/pest": "^2.0",
+        "phpstan/phpstan": "^2.1"
     },
     "autoload": {
         "psr-4": {
@@ -41,5 +42,13 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
+    },
+    "scripts": {
+        "test": "pest",
+        "phpstan": "phpstan analyze --memory-limit=256M",
+        "check": [
+            "@phpstan",
+            "@test"
+        ]
     }
 }

@@ -114,10 +114,10 @@ class SessionManager
     /**
      * List all available sessions.
      *
-     * @return array<array{
+     * @return array<int, array{
      *     name: string,
      *     description: string|null,
-     *     tags: array,
+     *     tags: array<int, string>,
      *     created_at: string|null,
      *     updated_at: string|null,
      *     command_count: int,

@@ -108,7 +108,7 @@ final class SessionOutputFormatter
      * Format and display session variables section.
      *
      * @param OutputInterface $output
-     * @param array $variables
+     * @param array<string, array{type: string, class: string|null, value: string|null}> $variables
      * @return void
      */
     public function displayVariables(OutputInterface $output, array $variables): void
@@ -134,7 +134,7 @@ final class SessionOutputFormatter
      * @param string $sessionName
      * @param int $commandCount
      * @param string|null $description
-     * @param array $tags
+     * @param array<int, string> $tags
      * @return void
      */
     public function displaySaveSummary(
