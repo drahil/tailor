@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
+use drahil\Tailor\Support\Validation\ValidationException;
+use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -41,25 +43,32 @@ class SessionExecuteCommand extends SessionCommand
         $sessionManager = $this->getSessionManager();
         $shell = $this->getApplication();
 
-        $name = $input->getArgument('name');
+        $nameInput = $input->getArgument('name');
 
-        if (! $this->validateSessionName($name, $output)) {
+        try {
+            $sessionName = SessionName::fromNullable($nameInput);
+            if (! $sessionName) {
+                $output->writeln('<error>Name of the session must be provided.</error>');
+                return 1;
+            }
+        } catch (ValidationException $e) {
+            $output->writeln("<error>{$e->result->firstError()}</error>");
             return 1;
         }
 
         try {
-            $sessionData = $sessionManager->load($name);
+            $sessionData = $sessionManager->load($sessionName);
 
-            $commandCount = count($sessionData['commands'] ?? []);
+            $commandCount = $sessionData->getCommandCount();
 
             $output->writeln('');
             $output->writeln("<info>✓ Executing session...</info>");
             $output->writeln('');
-            $output->writeln("  <fg=cyan>Name:</>        {$name}");
+            $output->writeln("  <fg=cyan>Name:</>        {$sessionData->metadata->name}");
             $output->writeln("  <fg=cyan>Commands:</>    {$commandCount}");
 
-            if (! empty($sessionData['description'])) {
-                $output->writeln("  <fg=cyan>Description:</> {$sessionData['description']}");
+            if ($sessionData->metadata->hasDescription()) {
+                $output->writeln("  <fg=cyan>Description:</> {$sessionData->metadata->description}");
             }
 
             $output->writeln('');
@@ -67,7 +76,7 @@ class SessionExecuteCommand extends SessionCommand
             $executedCount = 0;
             $failedCount = 0;
 
-            foreach ($sessionData['commands'] ?? [] as $command) {
+            foreach ($sessionData->commands as $command) {
                 $code = $command['code'];
 
                 if (str_contains($code, '\\0') || str_contains($code, '\\1')) {

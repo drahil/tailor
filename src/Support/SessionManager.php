@@ -4,24 +4,31 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Support;
 
-use DateTime;
+use drahil\Tailor\Support\DTOs\SessionData;
+use drahil\Tailor\Support\DTOs\SessionMetadata;
+use drahil\Tailor\Support\ValueObjects\SessionName;
+use Exception;
+use Illuminate\Contracts\Container\Singleton;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 
+/**
+ * Manages session storage and retrieval.
+ *
+ * Handles saving, loading, listing, and deleting sessions
+ * using a file-based storage system.
+ */
+#[Singleton]
 class SessionManager
 {
     /**
      * Path to the sessions storage directory.
-     *
-     * @var string
      */
     protected string $storagePath;
 
     /**
      * Create a new SessionManager instance.
-     *
-     * @param string|null $storagePath
      */
     public function __construct(?string $storagePath = null)
     {
@@ -31,49 +38,42 @@ class SessionManager
 
     /**
      * Check if a session exists.
-     *
-     * @param string $name
-     * @return bool
      */
-    public function exists(string $name): bool
+    public function exists(SessionName|string $name): bool
     {
-        return File::exists($this->getSessionPath($name));
+        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
+        return File::exists($this->getSessionPath($sessionName));
     }
 
     /**
-     * Save a session.
+     * Save a session with metadata and tracker data.
      *
-     * @param string $name
-     * @param SessionTracker $tracker
-     * @param array $metadata
-     * @return void
      * @throws RuntimeException|FileNotFoundException
      */
-    public function save(string $name, SessionTracker $tracker, array $metadata = []): void
+    public function save(SessionMetadata $metadata, SessionTracker $tracker): void
     {
-        $sessionPath = $this->getSessionPath($name);
+        $sessionPath = $this->getSessionPath($metadata->name);
 
-        $existingSession = $this->exists($name) ? $this->load($name) : null;
+        $existingCreatedAt = null;
+        if ($this->exists($metadata->name)) {
+            $existing = $this->load($metadata->name);
+            $existingCreatedAt = $existing->metadata->createdAt;
+        }
 
-        $sessionData = [
-            'name' => $name,
-            'description' => $metadata['description'] ?? null,
-            'tags' => $metadata['tags'] ?? [],
-            'created_at' => $existingSession['created_at'] ?? (new DateTime())->format('c'),
-            'updated_at' => (new DateTime())->format('c'),
-            'laravel_version' => app()->version(),
-            'php_version' => PHP_VERSION,
-            'commands' => $tracker->getCommands(),
-            'variables' => $tracker->getVariables(),
-            'metadata' => [
-                'total_commands' => $tracker->getCommandCount(),
-                'duration_seconds' => $tracker->getDuration(),
-                'project_path' => base_path(),
-                'started_at' => $tracker->getStartedAt()?->format('c'),
-            ],
-        ];
+        $sessionData = SessionData::fromTracker(
+            metadata: new SessionMetadata(
+                name: $metadata->name,
+                description: $metadata->description,
+                tags: $metadata->tags,
+                createdAt: $existingCreatedAt ?? $metadata->createdAt,
+                updatedAt: $metadata->updatedAt,
+                laravelVersion: app()->version(),
+                phpVersion: PHP_VERSION,
+            ),
+            tracker: $tracker
+        );
 
-        $json = json_encode($sessionData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
             throw new RuntimeException('Failed to encode session data to JSON: ' . json_last_error_msg());
@@ -85,36 +85,43 @@ class SessionManager
     }
 
     /**
-     * Load a session.
+     * Load a session by name.
      *
-     * @param string $name
-     * @return array
-     * @throws RuntimeException|FileNotFoundException
+     * @throws RuntimeException|FileNotFoundException|Exception
      */
-    public function load(string $name): array
+    public function load(SessionName|string $name): SessionData
     {
-        if (! $this->exists($name)) {
-            throw new RuntimeException("Session '{$name}' does not exist.");
+        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
+
+        if (! $this->exists($sessionName)) {
+            throw new RuntimeException("Session '{$sessionName}' does not exist.");
         }
 
-        $sessionPath = $this->getSessionPath($name);
+        $sessionPath = $this->getSessionPath($sessionName);
         $json = File::get($sessionPath);
 
-        $sessionData = json_decode($json, true);
+        $data = json_decode($json, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new RuntimeException(
-                "Failed to decode session '{$name}': " . json_last_error_msg()
+                "Failed to decode session '{$sessionName}': " . json_last_error_msg()
             );
         }
 
-        return $sessionData;
+        return SessionData::fromArray($data);
     }
 
     /**
      * List all available sessions.
      *
-     * @return array
+     * @return array<array{
+     *     name: string,
+     *     description: string|null,
+     *     tags: array,
+     *     created_at: string|null,
+     *     updated_at: string|null,
+     *     command_count: int,
+     *     laravel_version: string|null}>
      */
     public function list(): array
     {
@@ -154,40 +161,35 @@ class SessionManager
     /**
      * Delete a session.
      *
-     * @param string $name
-     * @return bool
      * @throws RuntimeException
      */
-    public function delete(string $name): bool
+    public function delete(SessionName|string $name): bool
     {
-        if (! $this->exists($name)) {
-            throw new RuntimeException("Session '{$name}' does not exist.");
+        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
+
+        if (! $this->exists($sessionName)) {
+            throw new RuntimeException("Session '{$sessionName}' does not exist.");
         }
 
-        return File::delete($this->getSessionPath($name));
+        return File::delete($this->getSessionPath($sessionName));
     }
 
     /**
      * Get detailed information about a session.
      *
-     * @param string $name
-     * @return array
      * @throws RuntimeException|FileNotFoundException
      */
-    public function getInfo(string $name): array
+    public function getInfo(SessionName|string $name): SessionData
     {
         return $this->load($name);
     }
 
     /**
      * Get the full path to a session file.
-     *
-     * @param string $name
-     * @return string
      */
-    protected function getSessionPath(string $name): string
+    protected function getSessionPath(SessionName $name): string
     {
-        $safeName = basename($name);
+        $safeName = basename($name->toString());
 
         if (! str_ends_with($safeName, '.json')) {
             $safeName .= '.json';
@@ -198,8 +200,6 @@ class SessionManager
 
     /**
      * Ensure the storage directory exists.
-     *
-     * @return void
      */
     protected function ensureStorageDirectoryExists(): void
     {
@@ -211,10 +211,18 @@ class SessionManager
     /**
      * Get all session names.
      *
-     * @return array
+     * @return array<string>
      */
     public function getSessionNames(): array
     {
         return array_column($this->list(), 'name');
+    }
+
+    /**
+     * Check if any sessions exist.
+     */
+    public function hasSessions(): bool
+    {
+        return count($this->getSessionNames()) > 0;
     }
 }

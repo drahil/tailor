@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\SessionManager;
-use drahil\Tailor\Support\SessionValidator;
 use Psy\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -13,26 +12,11 @@ use Symfony\Component\Console\Output\OutputInterface;
  * Abstract base class for session-related commands.
  *
  * This class provides common infrastructure for all session commands,
- * including access to the SessionManager and SessionValidator services,
- * as well as reusable helper methods for validation and error handling.
- *
- * Commands that don't need these features can extend Command directly.
+ * including access to the SessionManager service and reusable helper
+ * methods for validation and error handling.
  */
 abstract class SessionCommand extends Command
 {
-    /**
-     * SessionValidator instance for validating session data.
-     */
-    protected SessionValidator $validator;
-
-    /**
-     * Initialize the command with required dependencies.
-     */
-    public function __construct()
-    {
-        parent::__construct();
-        $this->validator = new SessionValidator();
-    }
 
     /**
      * Get the SessionManager from the PsySH application scope.
@@ -42,28 +26,6 @@ abstract class SessionCommand extends Command
     protected function getSessionManager(): SessionManager
     {
         return $this->getApplication()->getScopeVariable('__sessionManager');
-    }
-
-    /**
-     * Validate a session name and output an error if invalid.
-     *
-     * @param string|null $name The session name to validate
-     * @param OutputInterface $output The output interface for error messages
-     * @return bool True if valid, false if invalid (with error message output)
-     */
-    protected function validateSessionName(?string $name, OutputInterface $output): bool
-    {
-        if (! $this->validator->isNameProvided($name)) {
-            $output->writeln("<error>{$this->validator->getNameRequiredMessage()}</error>");
-            return false;
-        }
-
-        if (! $this->validator->isValidName($name)) {
-            $output->writeln("<error>{$this->validator->getNameValidationMessage()}</error>");
-            return false;
-        }
-
-        return true;
     }
 
     /**
