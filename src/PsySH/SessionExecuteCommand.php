@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
-use drahil\Tailor\Support\Validation\ValidationException;
-use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -42,17 +40,10 @@ class SessionExecuteCommand extends SessionCommand
     {
         $sessionManager = $this->getSessionManager();
         $shell = $this->getApplication();
-
         $nameInput = $input->getArgument('name');
 
-        try {
-            $sessionName = SessionName::fromNullable($nameInput);
-            if (! $sessionName) {
-                $output->writeln('<error>Name of the session must be provided.</error>');
-                return 1;
-            }
-        } catch (ValidationException $e) {
-            $output->writeln("<error>{$e->result->firstError()}</error>");
+        $sessionName = $this->validateSessionName($nameInput, $output);
+        if (! $sessionName) {
             return 1;
         }
 
@@ -77,16 +68,7 @@ class SessionExecuteCommand extends SessionCommand
             $failedCount = 0;
 
             foreach ($sessionData->commands as $command) {
-                $code = $command['code'];
-
-                if (str_contains($code, '\\0') || str_contains($code, '\\1')) {
-                    $code = stripcslashes($code);
-                } else {
-                    $decoded = urldecode($code);
-                    if ($decoded !== $code) {
-                        $code = $decoded;
-                    }
-                }
+                $code = $this->decodeCommandCode($command['code']);
 
                 if ($code === '_HiStOrY_V2_') {
                     continue;
