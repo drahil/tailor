@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
-use drahil\Tailor\Support\SessionManager;
-use Psy\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class SessionListCommand extends Command
+class SessionListCommand extends SessionCommand
 {
     protected function configure(): void
     {
@@ -22,7 +20,7 @@ class SessionListCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $sessionManager = app(SessionManager::class);
+        $sessionManager = $this->getSessionManager();
 
         $sessions = $sessionManager->list();
 
