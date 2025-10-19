@@ -17,7 +17,9 @@
     },
     "require-dev": {
         "pestphp/pest": "^2.0",
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "mockery/mockery": "^1.6",
+        "dg/bypass-finals": "^1.9"
     },
     "autoload": {
         "psr-4": {
