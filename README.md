@@ -32,6 +32,11 @@ Start Tailor:
 php artisan tailor
 ```
 
+Load a saved session:
+```bash
+php artisan tailor --session=my-work
+```
+
 ### Session Commands
 
 **Save a session:**
@@ -58,6 +63,14 @@ view my-work                                  # Alias for session:view
 ```bash
 session:execute my-work                       # Run all commands from a session
 exec my-work                                  # Alias for session:execute
+```
+
+**Update a loaded session:**
+```bash
+session:update                                # Add new commands to loaded session
+session:update -d "Updated description"       # Update with new description
+session:update -t tag1 -t tag2                # Update with new tags
+update                                        # Alias for session:update
 ```
 
 **Delete a session:**

@@ -41,7 +41,7 @@ final readonly class SessionData
             sessionMetadata: [
                 'total_commands' => $tracker->getCommandCount(),
                 'duration_seconds' => $tracker->getDuration(),
-                'project_path' => base_path(),
+                'project_path' => app()->basePath(),
                 'started_at' => $tracker->getStartedAt()?->format('c'),
             ],
         );

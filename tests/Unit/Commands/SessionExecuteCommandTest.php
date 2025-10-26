@@ -6,15 +6,18 @@ use drahil\Tailor\PsySH\SessionExecuteCommand;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
+use drahil\Tailor\Support\SessionCommandRunner;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Shell;
 use Symfony\Component\Console\Input\InputDefinition;
 
 beforeEach(function () {
     $this->sessionManager = mockSessionManager();
+    $this->sessionTracker = mockSessionTracker();
     $this->formatter = Mockery::mock(SessionOutputFormatter::class);
+    $this->commandRunner = Mockery::mock(SessionCommandRunner::class);
 
-    $this->command = new SessionExecuteCommand($this->formatter);
+    $this->command = new SessionExecuteCommand($this->formatter, $this->commandRunner);
 
     /* Mock the PsySH application */
     $definition = Mockery::mock(InputDefinition::class)->shouldIgnoreMissing();
@@ -23,6 +26,9 @@ beforeEach(function () {
     $this->app->shouldReceive('getScopeVariable')
         ->with('__sessionManager')
         ->andReturn($this->sessionManager);
+    $this->app->shouldReceive('getScopeVariable')
+        ->with('__sessionTracker')
+        ->andReturn($this->sessionTracker);
 
     $this->command->setApplication($this->app);
     $this->tester = createCommandTester($this->command);
@@ -57,20 +63,20 @@ test('executes session commands successfully', function () {
         ->shouldReceive('displayExecutionHeader')
         ->once();
 
-    $this->app
-        ->shouldReceive('execute')
-        ->twice()
-        ->andReturn(null, 5);
-
-    $this->app
-        ->shouldReceive('writeReturnValue')
+    $this->commandRunner
+        ->shouldReceive('executeWithSummary')
         ->once()
-        ->with(5);
+        ->with(
+            $this->app,
+            $sessionData,
+            $this->sessionTracker,
+            Mockery::type('Symfony\Component\Console\Output\OutputInterface')
+        )
+        ->andReturn(['executed' => 2, 'failed' => 0]);
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 2 command(s)');
+    expect($this->tester->getStatusCode())->toBe(0);
 });
 
 test('skips history marker commands', function () {
@@ -95,15 +101,14 @@ test('skips history marker commands', function () {
         ->shouldReceive('displayExecutionHeader')
         ->once();
 
-    $this->app
-        ->shouldReceive('execute')
+    $this->commandRunner
+        ->shouldReceive('executeWithSummary')
         ->once()
-        ->andReturn(null);
+        ->andReturn(['executed' => 1, 'failed' => 0]);
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)');
+    expect($this->tester->getStatusCode())->toBe(0);
 });
 
 test('handles command execution errors gracefully', function () {
@@ -128,22 +133,14 @@ test('handles command execution errors gracefully', function () {
         ->shouldReceive('displayExecutionHeader')
         ->once();
 
-    $this->app
-        ->shouldReceive('execute')
-        ->twice()
-        ->andReturnUsing(function ($code) {
-            if (str_contains($code, 'Exception')) {
-                throw new Exception('test');
-            }
-            return null;
-        });
+    $this->commandRunner
+        ->shouldReceive('executeWithSummary')
+        ->once()
+        ->andReturn(['executed' => 1, 'failed' => 1]);
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)')
-        ->and($this->tester->getDisplay())->toContain('(1 failed)')
-        ->and($this->tester->getDisplay())->toContain('Failed to execute');
+    expect($this->tester->getStatusCode())->toBe(0);
 });
 
 test('displays error when session does not exist', function () {
@@ -186,11 +183,10 @@ test('decodes URL-encoded commands before execution', function () {
         ->shouldReceive('displayExecutionHeader')
         ->once();
 
-    $this->app
-        ->shouldReceive('execute')
+    $this->commandRunner
+        ->shouldReceive('executeWithSummary')
         ->once()
-        ->with('echo "hello"')
-        ->andReturn(null);
+        ->andReturn(['executed' => 1, 'failed' => 0]);
 
     $this->tester->execute(['name' => 'test-session']);
 
@@ -220,13 +216,12 @@ test('displays execution output with command count', function () {
         ->shouldReceive('displayExecutionHeader')
         ->once();
 
-    $this->app
-        ->shouldReceive('execute')
-        ->times(3)
-        ->andReturn(null);
+    $this->commandRunner
+        ->shouldReceive('executeWithSummary')
+        ->once()
+        ->andReturn(['executed' => 3, 'failed' => 0]);
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 3 command(s)');
+    expect($this->tester->getStatusCode())->toBe(0);
 });

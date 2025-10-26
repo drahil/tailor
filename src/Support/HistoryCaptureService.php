@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace drahil\Tailor\Support;
 
 use Illuminate\Contracts\Container\Singleton;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Captures command history from history files.
  *
  * Reads and processes shell history files to extract
- * commands for session tracking.
+ * commands for session tracking. Also manages history
+ * file paths and session start line tracking.
  */
 #[Singleton]
 class HistoryCaptureService
 {
+    /**
+     * Default history file path.
+     */
+    private const DEFAULT_HISTORY_PATH = 'tailor/tailor_history';
+
     public function __construct(
         private readonly CommandFilterService $filter
     ) {}
@@ -99,5 +106,45 @@ class HistoryCaptureService
 
         $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
         return $lines !== false ? count($lines) : 0;
+    }
+
+    /**
+     * Get the history file path.
+     *
+     * Returns the configured history file path or default.
+     *
+     * @return string
+     */
+    public function getHistoryPath(): string
+    {
+        return Storage::disk('local')->path(self::DEFAULT_HISTORY_PATH);
+    }
+
+    /**
+     * Get the current line number in the history file.
+     *
+     * Returns the total number of lines currently in the history file,
+     * which can be used as a session start marker.
+     *
+     * @return int
+     */
+    public function getCurrentLineNumber(): int
+    {
+        return $this->getLineCount($this->getHistoryPath());
+    }
+
+    /**
+     * Mark the session start in the tracker.
+     *
+     * Sets the current history file line number as the session start point.
+     * This allows tracking which commands belong to the current session.
+     *
+     * @param SessionTracker $tracker The session tracker to update
+     * @return void
+     */
+    public function markSessionStart(SessionTracker $tracker): void
+    {
+        $startLine = $this->getCurrentLineNumber();
+        $tracker->setSessionStartLine($startLine);
     }
 }

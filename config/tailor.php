@@ -12,8 +12,8 @@ return [
     */
 
     'storage' => [
-        'sessions' => storage_path('tailor/sessions'),
-        'exports' => storage_path('tailor/exports'),
+        'sessions' => \Illuminate\Support\Facades\Storage::disk('local')->path('tailor/sessions'),
+        'exports' => \Illuminate\Support\Facades\Storage::disk('local')->path('tailor/exports'),
     ],
 
     /*

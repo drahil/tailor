@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH;
 
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
+use drahil\Tailor\Support\SessionCommandRunner;
 use Exception;
+use Psy\Shell;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -13,7 +15,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 class SessionExecuteCommand extends SessionCommand
 {
     public function __construct(
-        private readonly SessionOutputFormatter $formatter
+        private readonly SessionOutputFormatter $formatter,
+        private readonly SessionCommandRunner $runner
     ) {
         parent::__construct();
     }
@@ -45,7 +48,14 @@ class SessionExecuteCommand extends SessionCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $sessionManager = $this->getSessionManager();
-        $shell = $this->getApplication();
+        $application = $this->getApplication();
+
+        if (! $application instanceof Shell) {
+            throw new \RuntimeException('This command must be run within a PsySH shell.');
+        }
+
+        $shell = $application;
+        $sessionTracker = $shell->getScopeVariable('__sessionTracker');
         $nameInput = $input->getArgument('name');
 
         $sessionName = $this->validateSessionName($nameInput, $output);
@@ -58,35 +68,7 @@ class SessionExecuteCommand extends SessionCommand
 
             $this->formatter->displayExecutionHeader($output, $sessionData);
 
-            $executedCount = 0;
-            $failedCount = 0;
-
-            foreach ($sessionData->commands as $command) {
-                $code = $this->decodeCommandCode($command['code']);
-
-                if ($code === '_HiStOrY_V2_') {
-                    continue;
-                }
-
-                try {
-                    $output->writeln("<comment>>>> {$code}</comment>");
-
-                    $result = $shell->execute($code);
-
-                    if ($result !== null) {
-                        $shell->writeReturnValue($result);
-                    }
-
-                    $executedCount++;
-                } catch (Exception $e) {
-                    $failedCount++;
-                    $output->writeln("<error>Failed to execute: {$e->getMessage()}</error>");
-                }
-            }
-
-            $output->writeln('');
-            $output->writeln("<info>Executed {$executedCount} command(s)" .
-                ($failedCount > 0 ? " ({$failedCount} failed)" : "") . "</info>");
+            $this->runner->executeWithSummary($shell, $sessionData, $sessionTracker, $output);
 
             return 0;
 

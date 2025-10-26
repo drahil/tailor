@@ -12,6 +12,7 @@ use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionDescription;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -79,7 +80,7 @@ class SessionSaveCommand extends SessionCommand
         $sessionManager = $this->getSessionManager();
         $sessionTracker = $this->getApplication()->getScopeVariable('__sessionTracker');
 
-        $historyFile = storage_path('tailor/tailor_history');
+        $historyFile = Storage::disk('local')->path('tailor/tailor_history');
         $this->historyCaptureService->captureHistoryToTracker($sessionTracker, $historyFile);
 
         if ($sessionTracker->getCommandCount() === 0) {

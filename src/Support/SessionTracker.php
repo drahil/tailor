@@ -41,6 +41,13 @@ class SessionTracker
     protected int $sessionStartLine = 0;
 
     /**
+     * Name of the loaded session (if any).
+     *
+     * @var string|null
+     */
+    protected ?string $loadedSessionName = null;
+
+    /**
      * Create a new SessionTracker instance.
      */
     public function __construct()
@@ -242,5 +249,36 @@ class SessionTracker
         }
 
         return end($this->commands);
+    }
+
+    /**
+     * Set the name of the loaded session.
+     *
+     * @param string $name
+     * @return void
+     */
+    public function setLoadedSessionName(string $name): void
+    {
+        $this->loadedSessionName = $name;
+    }
+
+    /**
+     * Get the name of the loaded session.
+     *
+     * @return string|null
+     */
+    public function getLoadedSessionName(): ?string
+    {
+        return $this->loadedSessionName;
+    }
+
+    /**
+     * Check if a session is currently loaded.
+     *
+     * @return bool
+     */
+    public function hasLoadedSession(): bool
+    {
+        return $this->loadedSessionName !== null;
     }
 }

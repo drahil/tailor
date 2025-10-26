@@ -11,6 +11,7 @@ use Exception;
 use Illuminate\Contracts\Container\Singleton;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
@@ -32,7 +33,7 @@ class SessionManager
      */
     public function __construct(?string $storagePath = null)
     {
-        $this->storagePath = $storagePath ?? config('tailor.storage.sessions', storage_path('tailor/sessions'));
+        $this->storagePath = $storagePath ?? config('tailor.storage.sessions', Storage::disk('local')->path('tailor/sessions'));
         $this->ensureStorageDirectoryExists();
     }
 
@@ -72,6 +73,26 @@ class SessionManager
             ),
             tracker: $tracker
         );
+
+        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            throw new RuntimeException('Failed to encode session data to JSON: ' . json_last_error_msg());
+        }
+
+        if (File::put($sessionPath, $json) === false) {
+            throw new RuntimeException("Failed to write session to file: {$sessionPath}");
+        }
+    }
+
+    /**
+     * Save SessionData directly (used for updates).
+     *
+     * @throws RuntimeException
+     */
+    public function saveSessionData(SessionData $sessionData): void
+    {
+        $sessionPath = $this->getSessionPath($sessionData->metadata->name);
 
         $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 

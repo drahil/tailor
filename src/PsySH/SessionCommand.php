@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH;
 
+use drahil\Tailor\Support\CommandDecoder;
 use drahil\Tailor\Support\SessionManager;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionName;
@@ -122,6 +123,16 @@ abstract class SessionCommand extends Command
     }
 
     /**
+     * Get the CommandDecoder instance.
+     *
+     * @return CommandDecoder
+     */
+    protected function getCommandDecoder(): CommandDecoder
+    {
+        return app(CommandDecoder::class);
+    }
+
+    /**
      * Decode command code from storage format.
      *
      * Handles URL encoding and escape sequences used in history storage.
@@ -131,11 +142,6 @@ abstract class SessionCommand extends Command
      */
     protected function decodeCommandCode(string $code): string
     {
-        if (str_contains($code, '\\0') || str_contains($code, '\\1')) {
-            return stripcslashes($code);
-        }
-
-        $decoded = urldecode($code);
-        return $decoded !== $code ? $decoded : $code;
+        return $this->getCommandDecoder()->decode($code);
     }
 }
