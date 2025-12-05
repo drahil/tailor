@@ -1,0 +1,16 @@
+parameters:
+    level: 6
+    paths:
+        - src
+    excludePaths:
+        - tests
+        - src/Providers
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#Attribute class Illuminate\\#'
+        - '#Call to static method .* on an unknown class Illuminate\\#'
+        - '#Call to an undefined method Symfony\\Component\\Console\\Application::(getScopeVariable|execute|writeReturnValue)#'
+        - '#PHPDoc tag @throws with type .* is not subtype of Throwable#'

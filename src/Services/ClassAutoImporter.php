@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use drahil\Tailor\ValueObjects\ImportResult;
+use drahil\Tailor\Support\ValueObjects\ImportResult;
 use Exception;
 use Symfony\Component\Console\Output\OutputInterface;
 

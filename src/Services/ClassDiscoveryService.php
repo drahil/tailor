@@ -134,7 +134,7 @@ class ClassDiscoveryService
         $classes = [];
         $tokens = @token_get_all($contents);
 
-        if ($tokens === false) {
+        if (empty($tokens)) {
             return [];
         }
 

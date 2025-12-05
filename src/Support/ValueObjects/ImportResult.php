@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\ValueObjects;
+namespace drahil\Tailor\Support\ValueObjects;
 
 final readonly class ImportResult
 {

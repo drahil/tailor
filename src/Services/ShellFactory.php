@@ -47,7 +47,7 @@ MESSAGE;
     /**
      * Add Laravel-specific casters for better output formatting.
      */
-    private function addLaravelCasters(Configuration $config): void
+    public function addLaravelCasters(Configuration $config): void
     {
         if (! class_exists('Laravel\Tinker\TinkerCaster')) {
             return;
