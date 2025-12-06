@@ -30,8 +30,6 @@ class ClassAutoImporter
                 return ImportResult::empty();
             }
 
-            $output->writeln('<info>Auto-importing ' . count($classes) . ' classes...</info>');
-
             $useStatements = $this->importManager->generateUseStatements($classes);
             $includeFile = $this->fileManager->createIncludeFile($useStatements);
 

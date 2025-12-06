@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Console\Commands;
 
 use drahil\Tailor\PsySH\SessionDeleteCommand;
+use drahil\Tailor\PsySH\TailorAutoCompleter;
 use drahil\Tailor\PsySH\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionListCommand;
 use drahil\Tailor\PsySH\SessionSaveCommand;
@@ -55,6 +56,9 @@ class TailorCommand extends Command
             'startupMessage' => $this->getStartupMessage(),
             'historyFile' => storage_path('tailor/tailor_history'),
         ]);
+
+        $autoCompleter = new TailorAutoCompleter();
+        $config->setAutoCompleter($autoCompleter);
 
         $this->shellFactory->addLaravelCasters($config);
 
