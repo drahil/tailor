@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
@@ -175,16 +175,6 @@ class SessionManager
     }
 
     /**
-     * Get detailed information about a session.
-     *
-     * @throws RuntimeException|FileNotFoundException
-     */
-    public function getInfo(SessionName|string $name): SessionData
-    {
-        return $this->load($name);
-    }
-
-    /**
      * Get the full path to a session file.
      */
     protected function getSessionPath(SessionName $name): string
@@ -206,23 +196,5 @@ class SessionManager
         if (! File::isDirectory($this->storagePath)) {
             File::makeDirectory($this->storagePath, 0755, true);
         }
-    }
-
-    /**
-     * Get all session names.
-     *
-     * @return array<string>
-     */
-    public function getSessionNames(): array
-    {
-        return array_column($this->list(), 'name');
-    }
-
-    /**
-     * Check if any sessions exist.
-     */
-    public function hasSessions(): bool
-    {
-        return count($this->getSessionNames()) > 0;
     }
 }

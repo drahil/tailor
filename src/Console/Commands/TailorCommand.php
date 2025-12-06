@@ -13,9 +13,9 @@ use drahil\Tailor\Services\ClassAutoImporter;
 use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\IncludeFileManager;
 use drahil\Tailor\Services\ShellFactory;
+use drahil\Tailor\Services\SessionManager;
+use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
-use drahil\Tailor\Support\SessionManager;
-use drahil\Tailor\Support\SessionTracker;
 use Psy\Configuration;
 use Psy\Shell;
 use Symfony\Component\Console\Command\Command;
@@ -46,6 +46,10 @@ class TailorCommand extends Command
     public function execute(InputInterface $input, OutputInterface $output): int
     {
         $importResult = $this->autoImporter->prepare($output);
+
+        if (! $importResult->isSuccessful()) {
+            return Command::FAILURE;
+        }
 
         $config = new Configuration([
             'startupMessage' => $this->getStartupMessage(),

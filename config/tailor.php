@@ -73,4 +73,20 @@ return [
         'auto_save' => false,
         'auto_save_interval' => 300, // 5 minutes
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Class Discovery Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure which namespaces should be scanned for class auto-discovery.
+    | These namespaces will be available for auto-import in the REPL.
+    |
+    */
+
+    'discovery' => [
+        'scannable_namespaces' => [
+            'App\\',
+        ],
+    ],
 ];

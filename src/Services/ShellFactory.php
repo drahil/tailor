@@ -5,45 +5,9 @@ declare(strict_types=1);
 namespace drahil\Tailor\Services;
 
 use Psy\Configuration;
-use Psy\Shell;
 
 class ShellFactory
 {
-    /**
-     * Create a PsySH configuration with the given startup message.
-     */
-    public function createConfiguration(?string $startupMessage = null): Configuration
-    {
-        $config = new Configuration([
-            'startupMessage' => $startupMessage ?? $this->getDefaultStartupMessage(),
-        ]);
-
-        $this->addLaravelCasters($config);
-
-        return $config;
-    }
-
-    /**
-     * Create a configured PsySH shell instance.
-     */
-    public function create(Configuration $config): Shell
-    {
-        return new Shell($config);
-    }
-
-    /**
-     * Get the default startup message.
-     */
-    private function getDefaultStartupMessage(): string
-    {
-        return <<<'MESSAGE'
-Welcome to Tailor!
-
-Classes from your App namespace are auto-imported.
-Type 'User::' and press Tab for autocomplete.
-MESSAGE;
-    }
-
     /**
      * Add Laravel-specific casters for better output formatting.
      */

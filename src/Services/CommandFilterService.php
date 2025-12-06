@@ -66,13 +66,4 @@ class CommandFilterService
         );
     }
 
-    /**
-     * Get the list of skip patterns.
-     *
-     * @return array<string>
-     */
-    public function getSkipPatterns(): array
-    {
-        return self::SKIP_PATTERNS;
-    }
 }

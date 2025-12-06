@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 /**
  * Formats variable values for console output.

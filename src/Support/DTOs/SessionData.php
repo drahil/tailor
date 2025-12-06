@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Support\DTOs;
 
-use drahil\Tailor\Support\SessionTracker;
+use drahil\Tailor\Services\SessionTracker;
 use Exception;
 
 /**

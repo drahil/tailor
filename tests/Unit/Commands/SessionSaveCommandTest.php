@@ -6,7 +6,7 @@ use drahil\Tailor\PsySH\SessionSaveCommand;
 use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
-use drahil\Tailor\Support\SessionTracker;
+use drahil\Tailor\Services\SessionTracker;
 use Psy\Shell;
 use Symfony\Component\Console\Input\InputDefinition;
 

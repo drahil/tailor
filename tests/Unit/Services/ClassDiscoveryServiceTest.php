@@ -5,7 +5,7 @@ declare(strict_types=1);
 use drahil\Tailor\Services\ClassDiscoveryService;
 
 test('discovers classes in current project', function () {
-    $service = new ClassDiscoveryService();
+    $service = new ClassDiscoveryService(['App\\']);
 
     $classes = $service->discoverClasses();
 
@@ -13,7 +13,7 @@ test('discovers classes in current project', function () {
 });
 
 test('discovered classes have fully qualified names as keys', function () {
-    $service = new ClassDiscoveryService();
+    $service = new ClassDiscoveryService(['App\\']);
 
     $classes = $service->discoverClasses();
 
@@ -24,7 +24,7 @@ test('discovered classes have fully qualified names as keys', function () {
 });
 
 test('discovered classes have file paths as values', function () {
-    $service = new ClassDiscoveryService();
+    $service = new ClassDiscoveryService(['App\\']);
 
     $classes = $service->discoverClasses();
 

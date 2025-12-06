@@ -9,6 +9,13 @@ use Symfony\Component\Finder\Finder;
 class ClassDiscoveryService
 {
     /**
+     * @param array<string>|null $scannableNamespaces
+     */
+    public function __construct(
+        private readonly ?array $scannableNamespaces = null
+    ) {}
+
+    /**
      * Discover all classes in the application's App namespace.
      *
      * @return array<string, string> Map of fully qualified class name => file path
@@ -77,7 +84,16 @@ class ClassDiscoveryService
      */
     private function shouldScanNamespace(string $namespace): bool
     {
-        return str_starts_with($namespace, 'App\\');
+        $namespaces = $this->scannableNamespaces
+            ?? config('tailor.discovery.scannable_namespaces', ['App\\']);
+
+        foreach ($namespaces as $scannableNamespace) {
+            if (str_starts_with($namespace, $scannableNamespace)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

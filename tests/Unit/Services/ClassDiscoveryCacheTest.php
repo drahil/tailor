@@ -7,7 +7,7 @@ use drahil\Tailor\Services\ClassDiscoveryService;
 
 test('cache returns discovered classes', function () {
     $cache = new ClassDiscoveryCache();
-    $service = new ClassDiscoveryService();
+    $service = new ClassDiscoveryService(['App\\']);
 
     $classes = $cache->getOrDiscover($service);
 

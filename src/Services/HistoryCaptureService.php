@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use drahil\Tailor\Support\SessionTracker;
 use Illuminate\Contracts\Container\Singleton;
 
 /**
@@ -14,10 +13,10 @@ use Illuminate\Contracts\Container\Singleton;
  * commands for session tracking.
  */
 #[Singleton]
-class HistoryCaptureService
+readonly class HistoryCaptureService
 {
     public function __construct(
-        private readonly CommandFilterService $filter
+        private CommandFilterService $filter
     ) {}
 
     /**
@@ -61,44 +60,4 @@ class HistoryCaptureService
         }
     }
 
-    /**
-     * Capture commands from history file starting at specific line.
-     *
-     * @param string $historyFile
-     * @param int $startLine
-     * @return array<int, string>
-     */
-    public function captureFromLine(string $historyFile, int $startLine): array
-    {
-        if (! file_exists($historyFile)) {
-            return [];
-        }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-            return [];
-        }
-
-        $currentSessionLines = array_slice($lines, $startLine);
-
-        return $this->filter->filterCommands(
-            array_map('trim', $currentSessionLines)
-        );
-    }
-
-    /**
-     * Get total line count from history file.
-     *
-     * @param string $historyFile
-     * @return int
-     */
-    public function getLineCount(string $historyFile): int
-    {
-        if (! file_exists($historyFile)) {
-            return 0;
-        }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        return $lines !== false ? count($lines) : 0;
-    }
 }
