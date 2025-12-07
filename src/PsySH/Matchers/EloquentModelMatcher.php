@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\Matchers;
 
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Psy\TabCompletion\Matcher\AbstractContextAwareMatcher;
@@ -81,7 +82,7 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
 
         try {
             $object = $this->getVariable($objectName);
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException|Exception $e) {
             return [];
         }
 

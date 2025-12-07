@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Console\Commands;
 
+use drahil\Tailor\PsySH\AutoSaveLoopListener;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionViewCommand;
 use drahil\Tailor\PsySH\TailorAutoCompleter;
+use drahil\Tailor\Services\AutoSaveService;
 use drahil\Tailor\Services\ClassAutoImporter;
 use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\IncludeFileManager;
@@ -19,6 +21,7 @@ use drahil\Tailor\Services\ShellFactory;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Psy\Configuration;
 use Psy\Shell;
+use ReflectionClass;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -27,16 +30,23 @@ class TailorCommand extends Command
 {
     protected SessionTracker $sessionTracker;
     protected SessionManager $sessionManager;
+    protected AutoSaveService $autoSaveService;
 
     public function __construct(
         private readonly ClassAutoImporter $autoImporter,
         private readonly ShellFactory $shellFactory,
         private readonly IncludeFileManager $fileManager,
+        private readonly HistoryCaptureService $historyCaptureService,
     ) {
         parent::__construct('tailor');
 
         $this->sessionTracker = new SessionTracker();
         $this->sessionManager = new SessionManager();
+        $this->autoSaveService = new AutoSaveService(
+            $this->sessionManager,
+            $this->sessionTracker,
+            $this->historyCaptureService
+        );
     }
 
     public function configure(): void
@@ -82,6 +92,8 @@ class TailorCommand extends Command
 
         $this->hookSessionTracker($shell);
 
+        $this->setupAutoSave($shell);
+
         $shell->run();
 
         if ($importResult->hasIncludeFile()) {
@@ -114,6 +126,19 @@ class TailorCommand extends Command
             '__sessionTracker' => $this->sessionTracker,
             '__sessionManager' => $this->sessionManager,
         ]);
+    }
+
+    protected function setupAutoSave(Shell $shell): void
+    {
+        $listener = new AutoSaveLoopListener($this->autoSaveService);
+
+        $reflection = new ReflectionClass($shell);
+        $property = $reflection->getProperty('loopListeners');
+        $property->setAccessible(true);
+
+        $listeners = $property->getValue($shell);
+        $listeners[] = $listener;
+        $property->setValue($shell, $listeners);
     }
 
     protected function getStartupMessage(): string

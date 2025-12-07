@@ -19,9 +19,9 @@ class TailorServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Publish configuration file
-        // $this->publishes([
-        //     __DIR__ . '/../../config/tailor.php' => config_path('tailor.php'),
-        // ], 'tailor-config');
+         $this->publishes([
+             __DIR__ . '/../../config/tailor.php' => config_path('tailor.php'),
+         ], 'tailor-config');
     }
 
     public function register(): void

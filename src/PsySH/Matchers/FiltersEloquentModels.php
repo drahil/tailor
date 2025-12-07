@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\Matchers;
 
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -87,7 +88,7 @@ trait FiltersEloquentModels
             $object = $this->getVariable($objectName);
 
             return $object instanceof Model;
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException|Exception $e) {
             return false;
         }
     }
