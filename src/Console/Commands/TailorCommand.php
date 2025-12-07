@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Console\Commands;
 
-use drahil\Tailor\PsySH\SessionDeleteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionViewCommand;
 use drahil\Tailor\PsySH\TailorAutoCompleter;
-use drahil\Tailor\PsySH\SessionExecuteCommand;
-use drahil\Tailor\PsySH\SessionListCommand;
-use drahil\Tailor\PsySH\SessionSaveCommand;
-use drahil\Tailor\PsySH\SessionViewCommand;
 use drahil\Tailor\Services\ClassAutoImporter;
 use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\IncludeFileManager;
-use drahil\Tailor\Services\ShellFactory;
 use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Services\SessionTracker;
+use drahil\Tailor\Services\ShellFactory;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Psy\Configuration;
 use Psy\Shell;

@@ -59,5 +59,4 @@ readonly class HistoryCaptureService
             $tracker->addCommand($entry);
         }
     }
-
 }

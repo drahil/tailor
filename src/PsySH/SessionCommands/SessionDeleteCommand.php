@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\PsySH;
+namespace drahil\Tailor\PsySH\SessionCommands;
 
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;

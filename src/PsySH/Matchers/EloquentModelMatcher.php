@@ -44,7 +44,6 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
         $input = $this->getInput($tokens);
 
         $firstToken = array_pop($tokens);
-        $operatorToken = null;
 
         if (self::tokenIs($firstToken, self::T_STRING)) {
             $operatorToken = array_pop($tokens);

@@ -40,7 +40,7 @@ class TailorAutoCompleter extends AutoCompleter
      */
     public function addMatcher($matcher): void
     {
-        // Intentionally empty - prevents Shell from adding default matchers
+        /** Intentionally empty - prevents Shell from adding default matchers */
     }
 
     /**
