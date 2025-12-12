@@ -84,6 +84,13 @@ class TailorCommand extends Command
 
         $shell = new Shell($config);
 
+        /** Manually set the context on the autocompleter since Shell doesn't do it automatically */
+        $reflection = new ReflectionClass($shell);
+        $contextProperty = $reflection->getProperty('context');
+        $contextProperty->setAccessible(true);
+        $context = $contextProperty->getValue($shell);
+        $autoCompleter->setContext($context);
+
         if ($importResult->hasIncludeFile()) {
             $shell->setIncludes([$importResult->getIncludeFile()]);
         }

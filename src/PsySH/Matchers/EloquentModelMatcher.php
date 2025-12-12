@@ -78,11 +78,25 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
             return [];
         }
 
+        if (! isset($objectToken[1])) {
+            return [];
+        }
+
         $objectName = str_replace('$', '', $objectToken[1]);
 
         try {
-            $object = $this->getVariable($objectName);
-        } catch (InvalidArgumentException|Exception $e) {
+            $allVars = $this->getVariables();
+
+            if (! array_key_exists($objectName, $allVars)) {
+                return [];
+            }
+
+            $object = $allVars[$objectName];
+
+            if (! is_object($object)) {
+                return [];
+            }
+        } catch (Throwable $e) {
             return [];
         }
 
@@ -112,7 +126,11 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
             return [];
         }
 
-        $reflection = new ReflectionClass($className);
+        try {
+            $reflection = new ReflectionClass($className);
+        } catch (Throwable $e) {
+            return [];
+        }
 
         if (! $reflection->isSubclassOf(Model::class) && $reflection->getName() !== Model::class) {
             return [];
@@ -135,6 +153,7 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
         $completions = array_merge($completions, $this->getAttributeCompletions($model, $input));
         $completions = array_merge($completions, $this->getAccessorCompletions($model, $input));
         $completions = array_merge($completions, $this->getMethodCompletions($model, $input));
+        $completions = array_merge($completions, $this->getQueryBuilderCompletions($input));
 
         return array_values(array_unique($completions));
     }

@@ -49,7 +49,7 @@ trait FiltersEloquentModels
             $reflection = new ReflectionClass($className);
 
             return $reflection->isSubclassOf(Model::class) || $reflection->getName() === Model::class;
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             return false;
         }
     }
@@ -88,7 +88,7 @@ trait FiltersEloquentModels
             $object = $this->getVariable($objectName);
 
             return $object instanceof Model;
-        } catch (InvalidArgumentException|Exception $e) {
+        } catch (Throwable $e) {
             return false;
         }
     }

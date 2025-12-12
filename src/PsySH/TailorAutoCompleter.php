@@ -9,7 +9,10 @@ use drahil\Tailor\PsySH\Matchers\FilteredClassAttributesMatcher;
 use drahil\Tailor\PsySH\Matchers\FilteredClassMethodsMatcher;
 use drahil\Tailor\PsySH\Matchers\FilteredObjectAttributesMatcher;
 use drahil\Tailor\PsySH\Matchers\FilteredObjectMethodsMatcher;
+use Psy\Context;
+use Psy\ContextAware;
 use Psy\TabCompletion\AutoCompleter;
+use Psy\TabCompletion\Matcher\AbstractMatcher;
 use Psy\TabCompletion\Matcher\ClassNamesMatcher;
 use Psy\TabCompletion\Matcher\ConstantsMatcher;
 use Psy\TabCompletion\Matcher\FunctionsMatcher;
@@ -19,20 +22,49 @@ use Psy\TabCompletion\Matcher\VariablesMatcher;
 /**
  * Custom autocompleter for Tailor that prioritizes Eloquent model completions.
  */
-class TailorAutoCompleter extends AutoCompleter
+class TailorAutoCompleter extends AutoCompleter implements ContextAware
 {
+    /** @var AbstractMatcher[] */
+    private array $customMatchers = [];
+
+    /** @var bool */
+    private bool $matchersInitialized = false;
+
     public function __construct()
     {
-        parent::addMatcher(new EloquentModelMatcher());
-        parent::addMatcher(new FilteredClassMethodsMatcher());
-        parent::addMatcher(new FilteredClassAttributesMatcher());
-        parent::addMatcher(new FilteredObjectMethodsMatcher());
-        parent::addMatcher(new FilteredObjectAttributesMatcher());
-        parent::addMatcher(new ClassNamesMatcher());
-        parent::addMatcher(new VariablesMatcher());
-        parent::addMatcher(new ConstantsMatcher());
-        parent::addMatcher(new KeywordsMatcher());
-        parent::addMatcher(new FunctionsMatcher());
+        /** Store matchers but don't add them yet - wait for context to be set */
+        $this->customMatchers = [
+            new EloquentModelMatcher(),
+            new FilteredClassMethodsMatcher(),
+            new FilteredClassAttributesMatcher(),
+            new FilteredObjectMethodsMatcher(),
+            new FilteredObjectAttributesMatcher(),
+            new ClassNamesMatcher(),
+            new VariablesMatcher(),
+            new ConstantsMatcher(),
+            new KeywordsMatcher(),
+            new FunctionsMatcher(),
+        ];
+    }
+
+    /**
+     * Set the Context for all matchers and initialize them.
+     */
+    public function setContext(Context $context): void
+    {
+        if ($this->matchersInitialized) {
+            return;
+        }
+
+        /** Set context on matchers and add them to the parent autocompleter */
+        foreach ($this->customMatchers as $matcher) {
+            if ($matcher instanceof ContextAware) {
+                $matcher->setContext($context);
+            }
+            parent::addMatcher($matcher);
+        }
+
+        $this->matchersInitialized = true;
     }
 
     /**
