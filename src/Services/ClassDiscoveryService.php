@@ -6,13 +6,13 @@ namespace drahil\Tailor\Services;
 
 use Symfony\Component\Finder\Finder;
 
-class ClassDiscoveryService
+readonly class ClassDiscoveryService
 {
     /**
      * @param array<string>|null $scannableNamespaces
      */
     public function __construct(
-        private readonly ?array $scannableNamespaces = null
+        private ?array $scannableNamespaces = null
     ) {}
 
     /**

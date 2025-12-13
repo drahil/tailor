@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use ReflectionClass;
+use Throwable;
 
 /**
  * Trait for matchers that need to filter out Eloquent Models.

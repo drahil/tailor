@@ -62,5 +62,4 @@ final readonly class SessionDescription implements Stringable
     {
         return $this->value;
     }
-
 }

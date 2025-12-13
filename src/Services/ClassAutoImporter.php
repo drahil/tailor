@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use drahil\Tailor\Support\ValueObjects\ImportResult;
+use drahil\Tailor\Support\DTOs\ImportResult;
 use Exception;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class ClassAutoImporter
+readonly class ClassAutoImporter
 {
     public function __construct(
-        private readonly ClassDiscoveryCache $cache,
-        private readonly ClassDiscoveryService $discoveryService,
-        private readonly ClassImportManager $importManager,
-        private readonly IncludeFileManager $fileManager,
+        private ClassDiscoveryCache $cache,
+        private ClassDiscoveryService $discoveryService,
+        private ClassImportManager $importManager,
+        private IncludeFileManager $fileManager,
     ) {}
 
     /**
@@ -34,7 +34,6 @@ class ClassAutoImporter
             $includeFile = $this->fileManager->createIncludeFile($useStatements);
 
             return ImportResult::success($includeFile);
-
         } catch (Exception $e) {
             $output->writeln('<error>Auto-import failed: ' . $e->getMessage() . '</error>');
             $output->writeln('<error>at ' . $e->getFile() . ':' . $e->getLine() . '</error>');

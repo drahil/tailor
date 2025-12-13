@@ -12,6 +12,7 @@ use Illuminate\Contracts\Container\Singleton;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
+use Throwable;
 
 /**
  * Manages session storage and retrieval.
@@ -145,7 +146,7 @@ class SessionManager
                         'laravel_version' => $sessionData['laravel_version'] ?? null,
                     ];
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // Skip corrupted session files
                 continue;
             }

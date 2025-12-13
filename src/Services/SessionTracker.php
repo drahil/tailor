@@ -183,21 +183,6 @@ class SessionTracker
     }
 
     /**
-     * Serialize a variable for storage.
-     *
-     * @param mixed $value
-     * @return array{type: string, class: string|null, value: string|null}
-     */
-    protected function serializeVariable(mixed $value): array
-    {
-        return [
-            'type' => gettype($value),
-            'class' => is_object($value) ? get_class($value) : null,
-            'value' => $this->serializeOutput($value),
-        ];
-    }
-
-    /**
      * Check if the tracker has any commands.
      *
      * @return bool

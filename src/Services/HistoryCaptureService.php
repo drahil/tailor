@@ -20,6 +20,24 @@ readonly class HistoryCaptureService
     ) {}
 
     /**
+     * Mark the starting point of the current session in the history file.
+     *
+     * This sets the session start line in the tracker so that only commands
+     * from the current session are captured, not the entire history.
+     */
+    public function markSessionStart(SessionTracker $tracker, string $historyFile): void
+    {
+        if (file_exists($historyFile)) {
+            $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
+            $startLine = $lines !== false ? count($lines) : 0;
+        } else {
+            $startLine = 0;
+        }
+
+        $tracker->setSessionStartLine($startLine);
+    }
+
+    /**
      * Capture commands from history file and add to tracker.
      *
      * Reads the history file from the session start line,

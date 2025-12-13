@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace drahil\Tailor\Support\Formatting;
 
 use drahil\Tailor\Support\DTOs\SessionData;
-use drahil\Tailor\Services\VariableFormatter;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**

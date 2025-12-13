@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use Psy\TabCompletion\Matcher\AbstractContextAwareMatcher;
 use ReflectionClass;
 use ReflectionMethod;
+use Throwable;
 
 /**
  * Provides autocomplete for Eloquent model attributes, accessors, and query builder methods.
@@ -126,11 +127,7 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
             return [];
         }
 
-        try {
-            $reflection = new ReflectionClass($className);
-        } catch (Throwable $e) {
-            return [];
-        }
+        $reflection = new ReflectionClass($className);
 
         if (! $reflection->isSubclassOf(Model::class) && $reflection->getName() !== Model::class) {
             return [];
