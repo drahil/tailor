@@ -6,6 +6,7 @@ namespace drahil\Tailor\Services;
 
 use drahil\Tailor\PsySH\AutoSaveLoopListener;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
@@ -111,6 +112,7 @@ class TailorShellBuilder
             new SessionExecuteCommand($this->formatter),
             new SessionDeleteCommand(),
             new SessionViewCommand($this->formatter),
+            new SessionEditCommand(),
         ]);
     }
 
@@ -148,6 +150,7 @@ Available commands:
   session:save       Save current session
   session:view       View session details and commands
   session:execute    Execute a saved session
+  session:edit       Edit session metadata
   session:delete     Delete a saved session
 
 Type 'help' for more commands
