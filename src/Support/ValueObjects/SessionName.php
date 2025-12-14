@@ -65,11 +65,4 @@ final readonly class SessionName implements Stringable
         return $this->value;
     }
 
-    /**
-     * Check equality with another SessionName.
-     */
-    public function equals(self $other): bool
-    {
-        return $this->value === $other->value;
-    }
 }

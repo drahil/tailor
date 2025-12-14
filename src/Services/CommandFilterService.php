@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 use Illuminate\Contracts\Container\Singleton;
 
@@ -66,13 +66,4 @@ class CommandFilterService
         );
     }
 
-    /**
-     * Get the list of skip patterns.
-     *
-     * @return array<string>
-     */
-    public function getSkipPatterns(): array
-    {
-        return self::SKIP_PATTERNS;
-    }
 }

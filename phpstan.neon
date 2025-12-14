@@ -1,3 +1,5 @@
+includes:
+      - phar://phpstan.phar/conf/bleedingEdge.neon
 parameters:
     level: 6
     paths:
@@ -14,3 +16,7 @@ parameters:
         - '#Call to static method .* on an unknown class Illuminate\\#'
         - '#Call to an undefined method Symfony\\Component\\Console\\Application::(getScopeVariable|execute|writeReturnValue)#'
         - '#PHPDoc tag @throws with type .* is not subtype of Throwable#'
+        - '#Class Illuminate\\Database\\Eloquent\\Model not found#'
+        - '#has invalid type Illuminate\\Database\\Eloquent\\Model#'
+        - '#Call to method .* on an unknown class Illuminate\\Database\\Eloquent\\Model#'
+        - '#Trait .* has PHPDoc tag @method for method .* parameter .* with no value type specified in iterable type array#'

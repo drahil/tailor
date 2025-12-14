@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use drahil\Tailor\Support\SessionManager;
-use drahil\Tailor\Support\SessionTracker;
+use drahil\Tailor\Services\SessionManager;
+use drahil\Tailor\Services\SessionTracker;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Tester\CommandTester;

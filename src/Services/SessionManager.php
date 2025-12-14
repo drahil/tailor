@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
@@ -12,6 +12,7 @@ use Illuminate\Contracts\Container\Singleton;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
+use Throwable;
 
 /**
  * Manages session storage and retrieval.
@@ -112,8 +113,9 @@ class SessionManager
     }
 
     /**
-     * List all available sessions.
+     * List all available sessions with optional tag filtering.
      *
+     * @param array<string> $filterTags If provided, only sessions containing ALL these tags
      * @return array<int, array{
      *     name: string,
      *     description: string|null,
@@ -123,7 +125,7 @@ class SessionManager
      *     command_count: int,
      *     laravel_version: string|null}>
      */
-    public function list(): array
+    public function list(array $filterTags = []): array
     {
         $this->ensureStorageDirectoryExists();
 
@@ -135,18 +137,23 @@ class SessionManager
                 $sessionData = json_decode(File::get($file), true);
 
                 if (json_last_error() === JSON_ERROR_NONE) {
+                    $sessionTags = $sessionData['tags'] ?? [];
+
+                    if (! empty($filterTags) && ! $this->hasAllTags($sessionTags, $filterTags)) {
+                        continue;
+                    }
+
                     $sessions[] = [
                         'name' => $sessionData['name'] ?? basename($file, '.json'),
                         'description' => $sessionData['description'] ?? null,
-                        'tags' => $sessionData['tags'] ?? [],
+                        'tags' => $sessionTags,
                         'created_at' => $sessionData['created_at'] ?? null,
                         'updated_at' => $sessionData['updated_at'] ?? null,
                         'command_count' => $sessionData['metadata']['total_commands'] ?? count($sessionData['commands'] ?? []),
                         'laravel_version' => $sessionData['laravel_version'] ?? null,
                     ];
                 }
-            } catch (\Throwable $e) {
-                // Skip corrupted session files
+            } catch (Throwable $e) {
                 continue;
             }
         }
@@ -156,6 +163,42 @@ class SessionManager
         });
 
         return $sessions;
+    }
+
+    /**
+     * Check if a session has all specified tags.
+     *
+     * @param array<string> $sessionTags
+     * @param array<string> $filterTags
+     */
+    private function hasAllTags(array $sessionTags, array $filterTags): bool
+    {
+        return empty(array_diff($filterTags, $sessionTags));
+    }
+
+    /**
+     * Update an existing session with new data.
+     *
+     * @throws RuntimeException
+     */
+    public function update(SessionData $sessionData): void
+    {
+        if (! $this->exists($sessionData->metadata->name)) {
+            throw new RuntimeException(
+                "Session '{$sessionData->metadata->name}' does not exist."
+            );
+        }
+
+        $sessionPath = $this->getSessionPath($sessionData->metadata->name);
+        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            throw new RuntimeException('Failed to encode session data: ' . json_last_error_msg());
+        }
+
+        if (File::put($sessionPath, $json) === false) {
+            throw new RuntimeException("Failed to update session: {$sessionPath}");
+        }
     }
 
     /**
@@ -172,16 +215,6 @@ class SessionManager
         }
 
         return File::delete($this->getSessionPath($sessionName));
-    }
-
-    /**
-     * Get detailed information about a session.
-     *
-     * @throws RuntimeException|FileNotFoundException
-     */
-    public function getInfo(SessionName|string $name): SessionData
-    {
-        return $this->load($name);
     }
 
     /**
@@ -206,23 +239,5 @@ class SessionManager
         if (! File::isDirectory($this->storagePath)) {
             File::makeDirectory($this->storagePath, 0755, true);
         }
-    }
-
-    /**
-     * Get all session names.
-     *
-     * @return array<string>
-     */
-    public function getSessionNames(): array
-    {
-        return array_column($this->list(), 'name');
-    }
-
-    /**
-     * Check if any sessions exist.
-     */
-    public function hasSessions(): bool
-    {
-        return count($this->getSessionNames()) > 0;
     }
 }

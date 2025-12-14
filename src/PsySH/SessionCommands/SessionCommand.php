@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\PsySH;
+namespace drahil\Tailor\PsySH\SessionCommands;
 
-use drahil\Tailor\Support\SessionManager;
+use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Command\Command;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 use Illuminate\Contracts\Container\Singleton;
 
@@ -13,11 +13,29 @@ use Illuminate\Contracts\Container\Singleton;
  * commands for session tracking.
  */
 #[Singleton]
-class HistoryCaptureService
+readonly class HistoryCaptureService
 {
     public function __construct(
-        private readonly CommandFilterService $filter
+        private CommandFilterService $filter
     ) {}
+
+    /**
+     * Mark the starting point of the current session in the history file.
+     *
+     * This sets the session start line in the tracker so that only commands
+     * from the current session are captured, not the entire history.
+     */
+    public function markSessionStart(SessionTracker $tracker, string $historyFile): void
+    {
+        if (file_exists($historyFile)) {
+            $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
+            $startLine = $lines !== false ? count($lines) : 0;
+        } else {
+            $startLine = 0;
+        }
+
+        $tracker->setSessionStartLine($startLine);
+    }
 
     /**
      * Capture commands from history file and add to tracker.
@@ -58,46 +76,5 @@ class HistoryCaptureService
 
             $tracker->addCommand($entry);
         }
-    }
-
-    /**
-     * Capture commands from history file starting at specific line.
-     *
-     * @param string $historyFile
-     * @param int $startLine
-     * @return array<int, string>
-     */
-    public function captureFromLine(string $historyFile, int $startLine): array
-    {
-        if (! file_exists($historyFile)) {
-            return [];
-        }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-            return [];
-        }
-
-        $currentSessionLines = array_slice($lines, $startLine);
-
-        return $this->filter->filterCommands(
-            array_map('trim', $currentSessionLines)
-        );
-    }
-
-    /**
-     * Get total line count from history file.
-     *
-     * @param string $historyFile
-     * @return int
-     */
-    public function getLineCount(string $historyFile): int
-    {
-        if (! file_exists($historyFile)) {
-            return 0;
-        }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        return $lines !== false ? count($lines) : 0;
     }
 }

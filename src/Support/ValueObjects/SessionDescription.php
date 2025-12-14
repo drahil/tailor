@@ -62,20 +62,4 @@ final readonly class SessionDescription implements Stringable
     {
         return $this->value;
     }
-
-    /**
-     * Get the description length.
-     */
-    public function length(): int
-    {
-        return mb_strlen($this->value);
-    }
-
-    /**
-     * Check if description is empty.
-     */
-    public function isEmpty(): bool
-    {
-        return trim($this->value) === '';
-    }
 }

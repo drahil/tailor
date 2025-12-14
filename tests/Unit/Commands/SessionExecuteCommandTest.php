@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use drahil\Tailor\PsySH\SessionExecuteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;

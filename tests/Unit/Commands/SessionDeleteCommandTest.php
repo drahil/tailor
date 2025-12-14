@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use drahil\Tailor\PsySH\SessionDeleteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use Psy\Shell;
 use Symfony\Component\Console\Input\InputDefinition;
 

@@ -72,5 +72,22 @@ return [
     'session' => [
         'auto_save' => false,
         'auto_save_interval' => 300, // 5 minutes
+        'auto_save_min_commands' => 5, // Minimum commands before auto-save
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Class Discovery Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure which namespaces should be scanned for class auto-discovery.
+    | These namespaces will be available for auto-import in the REPL.
+    |
+    */
+
+    'discovery' => [
+        'scannable_namespaces' => [
+            'App\\',
+        ],
     ],
 ];

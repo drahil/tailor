@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use drahil\Tailor\PsySH\SessionListCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
 use drahil\Tailor\Support\SessionManager;
 use Psy\Shell;
 use Symfony\Component\Console\Input\InputDefinition;

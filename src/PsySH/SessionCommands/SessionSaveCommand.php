@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\PsySH;
+namespace drahil\Tailor\PsySH\SessionCommands;
 
+use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
-use drahil\Tailor\Support\HistoryCaptureService;
-use drahil\Tailor\Support\SessionTracker;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionDescription;
 use drahil\Tailor\Support\ValueObjects\SessionName;
+use drahil\Tailor\Support\ValueObjects\SessionTags;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -110,10 +110,17 @@ class SessionSaveCommand extends SessionCommand
             }
         }
 
+        try {
+            $tags = new SessionTags($input->getOption('tags') ?? []);
+        } catch (ValidationException $e) {
+            $output->writeln("<error>{$e->result->firstError()}</error>");
+            return 1;
+        }
+
         $metadata = new SessionMetadata(
             name: $sessionName,
             description: SessionDescription::fromNullable($input->getOption('description')),
-            tags: $input->getOption('tags') ?? [],
+            tags: $tags->toArray(),
         );
 
         try {

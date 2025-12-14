@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace drahil\Tailor\Support;
+namespace drahil\Tailor\Services;
 
 use DateTime;
 use DateTimeInterface;
@@ -119,29 +119,6 @@ class SessionTracker
     }
 
     /**
-     * Load commands from an array (used when restoring a session).
-     *
-     * @param array<int, array{code: string, output: string|null, timestamp: string, order: int}> $commands
-     * @return void
-     */
-    public function loadCommands(array $commands): void
-    {
-        $this->commands = $commands;
-    }
-
-    /**
-     * Track a variable in the current scope.
-     *
-     * @param string $name
-     * @param mixed $value
-     * @return void
-     */
-    public function trackVariable(string $name, mixed $value): void
-    {
-        $this->variables[$name] = $this->serializeVariable($value);
-    }
-
-    /**
      * Get all tracked variables.
      *
      * @return array<string, array{type: string, class: string|null, value: string|null}>
@@ -206,21 +183,6 @@ class SessionTracker
     }
 
     /**
-     * Serialize a variable for storage.
-     *
-     * @param mixed $value
-     * @return array{type: string, class: string|null, value: string|null}
-     */
-    protected function serializeVariable(mixed $value): array
-    {
-        return [
-            'type' => gettype($value),
-            'class' => is_object($value) ? get_class($value) : null,
-            'value' => $this->serializeOutput($value),
-        ];
-    }
-
-    /**
      * Check if the tracker has any commands.
      *
      * @return bool
@@ -228,19 +190,5 @@ class SessionTracker
     public function hasCommands(): bool
     {
         return $this->getCommandCount() > 0;
-    }
-
-    /**
-     * Get the last executed command.
-     *
-     * @return array{code: string, output: string|null, timestamp: string, order: int}|null
-     */
-    public function getLastCommand(): ?array
-    {
-        if (empty($this->commands)) {
-            return null;
-        }
-
-        return end($this->commands);
     }
 }
