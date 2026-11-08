@@ -146,7 +146,7 @@ Classes from your App namespace are auto-imported.
 Type 'User::' and press Tab for autocomplete.
 
 Available commands:
-  session:list       List all saved sessions
+  session:ls         List all saved sessions
   session:save       Save current session
   session:view       View session details and commands
   session:execute    Execute a saved session

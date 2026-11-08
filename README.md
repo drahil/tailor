@@ -44,8 +44,8 @@ session:save my-work --force                  # Overwrite existing session
 
 **List sessions:**
 ```bash
-session:list                                  # List all saved sessions
-sessions                                      # Alias for session:list
+session:ls                                    # List all saved sessions
+sessions                                      # Alias for session:ls
 ```
 
 **View session details:**

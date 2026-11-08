@@ -28,7 +28,7 @@ class SessionExecuteCommand extends SessionCommand
                 <<<HELP
   Execute a previously saved Tailor session by name.
   This will load and automatically run all commands in the session.
-  You can list available sessions with the 'session:list' command.
+  You can list available sessions with the 'session:ls' command.
 
   Usage:
     session:execute my-session                Execute the session named 'my-session'

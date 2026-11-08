@@ -15,19 +15,19 @@ class SessionListCommand extends SessionCommand
     protected function configure(): void
     {
         $this
-            ->setName('session:list')
+            ->setName('session:ls')
             ->setAliases(['sessions'])
             ->setDescription('List all saved sessions')
             ->setHelp(<<<HELP
   Display a list of all saved Tailor sessions.
 
   Usage:
-    session:list                           List all sessions
-    session:list --tag=api                 Filter by single tag
-    session:list --tag=api --tag=debug    Filter by multiple tags (all must match)
+    session:ls                             List all sessions
+    session:ls --tag=api                   Filter by single tag
+    session:ls --tag=api --tag=debug       Filter by multiple tags (all must match)
 
   Examples:
-    >>> session:list
+    >>> session:ls
     >>> sessions --tag=testing
     >>> sessions -t api -t debug
   HELP

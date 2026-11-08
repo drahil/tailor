@@ -22,7 +22,7 @@ class SessionDeleteCommand extends SessionCommand
                 <<<HELP
   Delete a previously saved Tailor session by name.
   You will be prompted for confirmation unless the --force flag is used.
-  You can list available sessions with the 'session:list' command.
+  You can list available sessions with the 'session:ls' command.
 
   Usage:
     session:delete my-session                   Delete session with confirmation
