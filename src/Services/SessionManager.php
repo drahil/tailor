@@ -56,8 +56,10 @@ class SessionManager
 
         $existingCreatedAt = null;
         if ($this->exists($metadata->name)) {
-            $existing = $this->load($metadata->name);
-            $existingCreatedAt = $existing->metadata->createdAt;
+            try {
+                $existingCreatedAt = $this->load($metadata->name)->metadata->createdAt;
+            } catch (RuntimeException) {
+            }
         }
 
         $sessionData = SessionData::fromTracker(
@@ -155,17 +157,49 @@ class SessionManager
         }
 
         $sessionPath = $this->getSessionPath($sessionName);
-        $json = File::get($sessionPath);
-
-        $data = json_decode($json, true);
+        $data = json_decode(File::get($sessionPath), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new RuntimeException(
-                "Failed to decode session '{$sessionName}': " . json_last_error_msg()
-            );
+            throw $this->damagedSession($sessionName, $sessionPath, json_last_error_msg());
         }
 
-        return SessionData::fromArray($data);
+        if (! is_array($data)) {
+            throw $this->damagedSession($sessionName, $sessionPath, 'not a JSON object');
+        }
+
+        if (! $this->hasValidCommands($data['commands'] ?? [])) {
+            throw $this->damagedSession($sessionName, $sessionPath, 'invalid commands');
+        }
+
+        $data['name'] = $sessionName->toString();
+
+        try {
+            return SessionData::fromArray($data);
+        } catch (Throwable $e) {
+            throw $this->damagedSession($sessionName, $sessionPath, $e->getMessage());
+        }
+    }
+
+    private function hasValidCommands(mixed $commands): bool
+    {
+        if (! is_array($commands)) {
+            return false;
+        }
+
+        foreach ($commands as $command) {
+            if (! is_array($command) || ! is_string($command['code'] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function damagedSession(SessionName $name, string $path, string $reason): RuntimeException
+    {
+        return new RuntimeException(
+            "Session '{$name}' is damaged ({$reason}). Fix or delete {$path}, or replace it with 'session:save {$name} --force'."
+        );
     }
 
     /**

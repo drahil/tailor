@@ -81,3 +81,48 @@ test('list filters by tags case-insensitively', function () {
     expect(array_column($this->manager->list(['api']), 'name'))->toBe(['work'])
         ->and($this->manager->list(['other']))->toBe([]);
 });
+
+function writeSessionFile(string $storagePath, string $contents): void
+{
+    file_put_contents($storagePath . '/work.json', $contents);
+}
+
+test('reports damaged session files clearly', function (string $contents, string $reason) {
+    writeSessionFile($this->storagePath, $contents);
+
+    expect(fn () => $this->manager->load('work'))
+        ->toThrow(RuntimeException::class, "Session 'work' is damaged ({$reason})");
+})->with([
+    'invalid json' => ['{"name": ', 'Syntax error'],
+    'json null' => ['null', 'not a JSON object'],
+    'commands not a list' => ['{"commands": "x"}', 'invalid commands'],
+    'command without code' => ['{"commands": [{"output": null}]}', 'invalid commands'],
+]);
+
+test('reports wrongly typed fields as damaged', function () {
+    writeSessionFile($this->storagePath, '{"tags": "api", "commands": []}');
+
+    expect(fn () => $this->manager->load('work'))
+        ->toThrow(RuntimeException::class, "Session 'work' is damaged");
+});
+
+test('uses the file name when the stored name is missing or different', function () {
+    writeSessionFile($this->storagePath, '{"name": "other", "commands": [{"code": "$a = 1"}]}');
+
+    expect($this->manager->load('work')->metadata->name->toString())->toBe('work');
+
+    writeSessionFile($this->storagePath, '{"commands": [{"code": "$a = 1"}]}');
+
+    expect($this->manager->load('work')->getCommandCount())->toBe(1);
+});
+
+test('save replaces a damaged session file', function () {
+    writeSessionFile($this->storagePath, 'null');
+
+    $tracker = new SessionTracker();
+    $tracker->addCommand('$fresh = true');
+
+    $this->manager->save(new SessionMetadata(name: SessionName::from('work')), $tracker);
+
+    expect(array_column($this->manager->load('work')->commands, 'code'))->toBe(['$fresh = true']);
+});
