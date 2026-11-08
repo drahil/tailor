@@ -13,13 +13,15 @@
     "require": {
         "php": "^8.2",
         "symfony/console": "^7.3 || ^8.0",
-        "psy/psysh": "^0.12.12"
+        "psy/psysh": "^0.12.12",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0"
     },
     "require-dev": {
-        "pestphp/pest": "^2.0",
+        "pestphp/pest": "^3.0 || ^4.0",
         "phpstan/phpstan": "^2.1",
         "mockery/mockery": "^1.6",
-        "dg/bypass-finals": "^1.9"
+        "dg/bypass-finals": "^1.9",
+        "illuminate/filesystem": "^11.0 || ^12.0 || ^13.0"
     },
     "autoload": {
         "psr-4": {
