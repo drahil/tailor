@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
+use DateTime;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionTags;
+use Exception;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -71,14 +73,28 @@ class SessionListCommand extends SessionCommand
                 : '';
 
             $output->writeln(sprintf(
-                '  <fg=cyan>%s</> - %s (%d commands)%s',
+                '  <fg=cyan>%s</> - %s (%d %s)%s',
                 $session['name'],
-                $session['created_at'],
+                $this->formatDate($session['created_at']),
                 $session['command_count'],
+                $session['command_count'] === 1 ? 'command' : 'commands',
                 $tagsDisplay
             ));
         }
 
         return 0;
+    }
+
+    private function formatDate(?string $date): string
+    {
+        if ($date === null) {
+            return 'unknown date';
+        }
+
+        try {
+            return (new DateTime($date))->format('Y-m-d H:i');
+        } catch (Exception) {
+            return $date;
+        }
     }
 }
