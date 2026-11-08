@@ -62,7 +62,7 @@ class SessionDeleteCommand extends SessionCommand
 
         $force = $input->getOption('force');
         if (! $force) {
-            if (! $this->confirm($output, "Are you sure you want to delete session '{$sessionName}'?")) {
+            if (! $this->confirm($input, $output, "Are you sure you want to delete session '{$sessionName}'?")) {
                 $output->writeln('<info>Delete cancelled.</info>');
                 return 0;
             }

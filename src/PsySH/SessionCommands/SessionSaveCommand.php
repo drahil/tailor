@@ -104,7 +104,7 @@ class SessionSaveCommand extends SessionCommand
         if ($this->sessionExists($sessionName->toString()) && ! $force) {
             $output->writeln("<comment>Session '{$sessionName}' already exists.</comment>");
 
-            if (! $this->confirm($output, 'Overwrite existing session?')) {
+            if (! $this->confirm($input, $output, 'Overwrite existing session?')) {
                 $output->writeln('<info>Save cancelled.</info>');
                 return 0;
             }
