@@ -22,25 +22,72 @@ readonly class ClassDiscoveryService
      */
     public function discoverClasses(): array
     {
-        $psr4Mappings = $this->getComposerPsr4Mappings();
         $classes = [];
 
-        foreach ($psr4Mappings as $namespace => $directories) {
+        foreach ($this->getScannableDirectories() as [$namespace, $directory]) {
+            $classes = array_merge($classes, $this->scanDirectory($namespace, $directory));
+        }
+
+        return $classes;
+    }
+
+    /**
+     * Hash of the scanned files and their modification times, without reading them.
+     */
+    public function fingerprint(): string
+    {
+        $autoloadFile = $this->getComposerAutoloadPath();
+        $parts = [$autoloadFile . ':' . (file_exists($autoloadFile) ? filemtime($autoloadFile) : 0)];
+
+        foreach ($this->getScannableDirectories() as [$namespace, $directory]) {
+            $parts[] = $namespace . '=' . $directory;
+
+            try {
+                foreach ($this->createFinder($directory) as $file) {
+                    $parts[] = $file->getPathname() . ':' . $file->getMTime();
+                }
+            } catch (\Exception) {
+                continue;
+            }
+        }
+
+        sort($parts);
+
+        return md5(implode("\n", $parts));
+    }
+
+    /**
+     * @return array<int, array{0: string, 1: string}> Pairs of namespace and directory
+     */
+    private function getScannableDirectories(): array
+    {
+        $directories = [];
+
+        foreach ($this->getComposerPsr4Mappings() as $namespace => $paths) {
             if (! $this->shouldScanNamespace($namespace)) {
                 continue;
             }
 
-            foreach ((array) $directories as $directory) {
-                if (! is_dir($directory)) {
-                    continue;
+            foreach ((array) $paths as $directory) {
+                if (is_dir($directory)) {
+                    $directories[] = [$namespace, $directory];
                 }
-
-                $discovered = $this->scanDirectory($namespace, $directory);
-                $classes = array_merge($classes, $discovered);
             }
         }
 
-        return $classes;
+        return $directories;
+    }
+
+    private function createFinder(string $directory): Finder
+    {
+        return (new Finder())
+            ->files()
+            ->in($directory)
+            ->name('*.php')
+            ->notPath('database/migrations')
+            ->notPath('database/seeders')
+            ->notPath('tests')
+            ->ignoreDotFiles(true);
     }
 
     /**
@@ -92,18 +139,9 @@ readonly class ClassDiscoveryService
     private function scanDirectory(string $baseNamespace, string $directory): array
     {
         $classes = [];
-        $finder = new Finder();
 
         try {
-            $finder->files()
-                ->in($directory)
-                ->name('*.php')
-                ->notPath('database/migrations')
-                ->notPath('database/seeders')
-                ->notPath('tests')
-                ->ignoreDotFiles(true);
-
-            foreach ($finder as $file) {
+            foreach ($this->createFinder($directory) as $file) {
                 $classNames = $this->extractClassNames($file->getContents());
 
                 foreach ($classNames as $className) {

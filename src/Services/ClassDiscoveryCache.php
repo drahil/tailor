@@ -14,104 +14,64 @@ class ClassDiscoveryCache
     }
 
     /**
-     * Get cached class map if valid, otherwise discover and cache.
+     * Get the cached class map while the scanned files are unchanged, otherwise discover and cache.
      *
      * @return array<string, string>
      */
     public function getOrDiscover(ClassDiscoveryService $discoveryService): array
     {
-        if ($this->isCacheValid()) {
-            $cached = $this->readCache();
+        $fingerprint = $discoveryService->fingerprint();
+        $cached = $this->readCache();
 
-            if ($cached !== null) {
-                return $cached;
-            }
+        if ($cached !== null && $cached['fingerprint'] === $fingerprint) {
+            return $cached['classes'];
         }
 
         $classes = $discoveryService->discoverClasses();
-        $this->writeCache($classes);
+        $this->writeCache($fingerprint, $classes);
 
         return $classes;
     }
 
     /**
-     * Check if cache is valid based on composer.lock modification time.
-     */
-    private function isCacheValid(): bool
-    {
-        $cacheFile = $this->getCacheFilePath();
-
-        if (! file_exists($cacheFile)) {
-            return false;
-        }
-
-        $composerLockPath = $this->getComposerLockPath();
-
-        if (! file_exists($composerLockPath)) {
-            return true;
-        }
-
-        $cacheTime = filemtime($cacheFile);
-        $composerTime = filemtime($composerLockPath);
-
-        return $cacheTime !== false && $composerTime !== false && $cacheTime >= $composerTime;
-    }
-
-    /**
-     * Read cached class map.
-     *
-     * @return array<string, string>|null
+     * @return array{fingerprint: string, classes: array<string, string>}|null
      */
     private function readCache(): ?array
     {
         $cacheFile = $this->getCacheFilePath();
-
-        if (! file_exists($cacheFile)) {
-            return null;
-        }
-
-        $content = @file_get_contents($cacheFile);
+        $content = file_exists($cacheFile) ? @file_get_contents($cacheFile) : false;
 
         if ($content === false) {
             return null;
         }
 
-        $data = @unserialize($content);
+        $data = json_decode($content, true);
 
-        return is_array($data) ? $data : null;
-    }
-
-    /**
-     * Write class map to cache.
-     *
-     * @param array<string, string> $classes
-     */
-    private function writeCache(array $classes): void
-    {
-        $cacheFile = $this->getCacheFilePath();
-        $cacheDir = dirname($cacheFile);
-
-        if (! is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0755, true);
+        if (! is_array($data) || ! is_string($data['fingerprint'] ?? null) || ! is_array($data['classes'] ?? null)) {
+            return null;
         }
 
-        @file_put_contents($cacheFile, serialize($classes));
+        return ['fingerprint' => $data['fingerprint'], 'classes' => $data['classes']];
     }
 
     /**
-     * Get cache file path.
+     * @param array<string, string> $classes
      */
+    private function writeCache(string $fingerprint, array $classes): void
+    {
+        if (! is_dir($this->cacheDir)) {
+            @mkdir($this->cacheDir, 0755, true);
+        }
+
+        @file_put_contents(
+            $this->getCacheFilePath(),
+            json_encode(['fingerprint' => $fingerprint, 'classes' => $classes], JSON_UNESCAPED_SLASHES)
+        );
+    }
+
     private function getCacheFilePath(): string
     {
-        return $this->cacheDir . '/tailor_class_cache.php';
-    }
-
-    /**
-     * Get composer.lock file path.
-     */
-    private function getComposerLockPath(): string
-    {
-        return base_path('composer.lock');
+        return $this->cacheDir . '/class_cache.json';
     }
 
     /**

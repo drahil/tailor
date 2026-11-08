@@ -69,3 +69,10 @@ test('ignores anonymous classes', function () {
 
     expect(extractClassNames($code))->toBe([]);
 });
+
+test('fingerprint is stable and depends on the scanned namespaces', function () {
+    $tailor = new ClassDiscoveryService(['drahil\\Tailor\\']);
+
+    expect($tailor->fingerprint())->toBe($tailor->fingerprint())
+        ->and($tailor->fingerprint())->not->toBe((new ClassDiscoveryService(['App\\']))->fingerprint());
+});
