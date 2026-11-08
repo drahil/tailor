@@ -8,6 +8,7 @@ use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Command\Command;
+use Psy\Util\Str;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -122,20 +123,14 @@ abstract class SessionCommand extends Command
     }
 
     /**
-     * Decode command code from storage format.
-     *
-     * Handles URL encoding and escape sequences used in history storage.
-     *
-     * @param string $code The encoded command code
-     * @return string The decoded command code
+     * Decode libedit-encoded code from sessions saved before history was decoded on capture.
      */
     protected function decodeCommandCode(string $code): string
     {
-        if (str_contains($code, '\\0') || str_contains($code, '\\1')) {
-            return stripcslashes($code);
+        if (str_contains($code, '\\040')) {
+            return Str::unvis($code);
         }
 
-        $decoded = urldecode($code);
-        return $decoded !== $code ? $decoded : $code;
+        return $code;
     }
 }

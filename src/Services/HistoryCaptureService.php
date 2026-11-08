@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Services;
 
 use Illuminate\Contracts\Container\Singleton;
+use Psy\Util\Str;
 
 /**
  * Captures command history from history files.
@@ -15,6 +16,8 @@ use Illuminate\Contracts\Container\Singleton;
 #[Singleton]
 readonly class HistoryCaptureService
 {
+    private const LIBEDIT_HEADER = '_HiStOrY_V2_';
+
     public function __construct(
         private CommandFilterService $filter
     ) {}
@@ -58,12 +61,22 @@ readonly class HistoryCaptureService
             return;
         }
 
+        $isLibedit = ($lines[0] ?? null) === self::LIBEDIT_HEADER;
+
         $sessionStartLine = $tracker->getSessionStartLine();
         $currentSessionLines = array_slice($lines, $sessionStartLine);
 
         $tracker->clear();
 
         foreach ($currentSessionLines as $entry) {
+            if ($entry === self::LIBEDIT_HEADER) {
+                continue;
+            }
+
+            if ($isLibedit) {
+                $entry = Str::unvis($entry);
+            }
+
             $entry = trim($entry);
 
             if (empty($entry)) {
