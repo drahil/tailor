@@ -4,34 +4,19 @@ declare(strict_types=1);
 
 use drahil\Tailor\Services\ClassDiscoveryService;
 
-test('discovers classes in current project', function () {
-    $service = new ClassDiscoveryService(['App\\']);
+test('discovers classes from the project autoload map', function () {
+    $service = new ClassDiscoveryService(['drahil\\Tailor\\']);
 
     $classes = $service->discoverClasses();
 
-    expect($classes)->toBeArray();
+    expect($classes)->toHaveKey(ClassDiscoveryService::class)
+        ->and($classes[ClassDiscoveryService::class])->toBe(realpath(base_path('src/Services/ClassDiscoveryService.php')));
 });
 
-test('discovered classes have fully qualified names as keys', function () {
+test('discovers nothing for namespaces that are not scanned', function () {
     $service = new ClassDiscoveryService(['App\\']);
 
-    $classes = $service->discoverClasses();
-
-    if (! empty($classes)) {
-        $firstKey = array_key_first($classes);
-        expect($firstKey)->toContain('\\');
-    }
-});
-
-test('discovered classes have file paths as values', function () {
-    $service = new ClassDiscoveryService(['App\\']);
-
-    $classes = $service->discoverClasses();
-
-    foreach ($classes as $path) {
-        expect($path)->toBeString();
-        break;
-    }
+    expect($service->discoverClasses())->toBe([]);
 });
 
 function extractClassNames(string $contents): array

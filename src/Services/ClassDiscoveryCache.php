@@ -10,7 +10,7 @@ class ClassDiscoveryCache
 
     public function __construct()
     {
-        $this->cacheDir = $this->determineCacheDirectory();
+        $this->cacheDir = storage_path('tailor');
     }
 
     /**
@@ -111,39 +111,7 @@ class ClassDiscoveryCache
      */
     private function getComposerLockPath(): string
     {
-        $vendorDir = getcwd() . '/vendor';
-
-        for ($i = 0; $i < 5; $i++) {
-            $lockPath = dirname($vendorDir) . '/composer.lock';
-
-            if (file_exists($lockPath)) {
-                return $lockPath;
-            }
-
-            $vendorDir = dirname($vendorDir, 2) . '/vendor';
-        }
-
-        return '';
-    }
-
-    /**
-     * Determine cache directory.
-     */
-    private function determineCacheDirectory(): string
-    {
-        $vendorDir = getcwd() . '/vendor';
-
-        for ($i = 0; $i < 5; $i++) {
-            $storageDir = dirname($vendorDir) . '/storage/tailor';
-
-            if (is_dir(dirname($storageDir))) {
-                return $storageDir;
-            }
-
-            $vendorDir = dirname($vendorDir, 2) . '/vendor';
-        }
-
-        return sys_get_temp_dir() . '/tailor';
+        return base_path('composer.lock');
     }
 
     /**

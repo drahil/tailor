@@ -30,6 +30,13 @@ if (! function_exists('storage_path')) {
     }
 }
 
+if (! function_exists('base_path')) {
+    function base_path(string $path = ''): string
+    {
+        return dirname(__DIR__) . ($path !== '' ? '/' . ltrim($path, '/') : '');
+    }
+}
+
 if (! function_exists('config')) {
     /**
      * @var array<string, mixed>

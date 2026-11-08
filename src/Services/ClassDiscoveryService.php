@@ -64,19 +64,7 @@ readonly class ClassDiscoveryService
      */
     private function getComposerAutoloadPath(): string
     {
-        $vendorDir = getcwd() . '/vendor';
-
-        for ($i = 0; $i < 5; $i++) {
-            $autoloadPath = $vendorDir . '/composer/autoload_psr4.php';
-
-            if (file_exists($autoloadPath)) {
-                return $autoloadPath;
-            }
-
-            $vendorDir = dirname($vendorDir, 2) . '/vendor';
-        }
-
-        return '';
+        return base_path('vendor/composer/autoload_psr4.php');
     }
 
     /**
