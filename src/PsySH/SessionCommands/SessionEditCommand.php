@@ -96,14 +96,15 @@ class SessionEditCommand extends SessionCommand
                 $hasChanges = true;
             }
 
-            $newTags = $this->calculateNewTags(
-                $metadata->tags,
+            $currentTags = new SessionTags($metadata->tags);
+            $tags = $this->calculateNewTags(
+                $currentTags,
                 $input->getOption('set-tags'),
                 $input->getOption('add-tag'),
                 $input->getOption('remove-tag')
             );
 
-            if ($newTags !== $metadata->tags) {
+            if ($tags->toArray() !== $currentTags->toArray()) {
                 $hasChanges = true;
             }
 
@@ -112,10 +113,8 @@ class SessionEditCommand extends SessionCommand
                 return 0;
             }
 
-            $tags = new SessionTags($newTags);
-
             $updatedMetadata = new SessionMetadata(
-                name: $metadata->name,
+                name: $sessionName,
                 description: $newDescription,
                 tags: $tags->toArray(),
                 createdAt: $metadata->createdAt,
@@ -136,7 +135,7 @@ class SessionEditCommand extends SessionCommand
             $output->writeln('');
             $output->writeln('<info>✓ Session updated successfully!</info>');
             $output->writeln('');
-            $output->writeln("  <fg=cyan>Name:</>        {$metadata->name}");
+            $output->writeln("  <fg=cyan>Name:</>        {$sessionName}");
 
             if ($newDescription) {
                 $output->writeln("  <fg=cyan>Description:</> {$newDescription}");
@@ -161,32 +160,22 @@ class SessionEditCommand extends SessionCommand
     /**
      * Calculate new tags based on provided options.
      *
-     * @param array<string> $currentTags
      * @param array<string>|null $setTags
      * @param array<string>|null $addTags
      * @param array<string>|null $removeTags
-     * @return array<string>
      */
     private function calculateNewTags(
-        array $currentTags,
+        SessionTags $currentTags,
         ?array $setTags,
         ?array $addTags,
         ?array $removeTags
-    ): array {
-        if ($setTags !== null && count($setTags) > 0) {
-            return $setTags;
+    ): SessionTags {
+        if (! empty($setTags)) {
+            return new SessionTags($setTags);
         }
 
-        $tags = $currentTags;
-
-        if ($addTags !== null && count($addTags) > 0) {
-            $tags = array_unique(array_merge($tags, $addTags));
-        }
-
-        if ($removeTags !== null && count($removeTags) > 0) {
-            $tags = array_values(array_diff($tags, $removeTags));
-        }
-
-        return $tags;
+        return $currentTags
+            ->add($addTags ?? [])
+            ->remove($removeTags ?? []);
     }
 }

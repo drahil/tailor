@@ -96,3 +96,7 @@ test('checks equality between tags', function () {
     expect($tag1->equals($tag2))->toBeTrue()
         ->and($tag1->equals($tag3))->toBeFalse();
 });
+
+test('lowercases tags created with the constructor', function () {
+    expect((new SessionTag(' API '))->toString())->toBe('api');
+});

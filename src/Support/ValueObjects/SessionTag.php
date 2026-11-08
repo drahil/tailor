@@ -17,15 +17,18 @@ use Stringable;
  */
 final readonly class SessionTag implements Stringable
 {
-    public function __construct(
-        #[NotEmpty(message: 'Tag cannot be empty')]
-        #[Pattern(
-            pattern: '/^[a-zA-Z0-9_-]+$/',
-            message: 'Tag must contain only alphanumeric characters, hyphens, and underscores'
-        )]
-        #[MaxLength(length: 50, message: 'Tag cannot exceed 50 characters')]
-        private string $value
-    ) {
+    #[NotEmpty(message: 'Tag cannot be empty')]
+    #[Pattern(
+        pattern: '/^[a-z0-9_-]+$/',
+        message: 'Tag must contain only alphanumeric characters, hyphens, and underscores'
+    )]
+    #[MaxLength(length: 50, message: 'Tag cannot exceed 50 characters')]
+    private string $value;
+
+    public function __construct(string $value)
+    {
+        $this->value = strtolower(trim($value));
+
         AttributeValidator::validateOrFail($this);
     }
 
@@ -34,7 +37,7 @@ final readonly class SessionTag implements Stringable
      */
     public static function from(string $value): self
     {
-        return new self(strtolower(trim($value)));
+        return new self($value);
     }
 
     /**

@@ -213,7 +213,10 @@ class SessionManager
      */
     private function hasAllTags(array $sessionTags, array $filterTags): bool
     {
-        return empty(array_diff($filterTags, $sessionTags));
+        return empty(array_diff(
+            array_map('strtolower', $filterTags),
+            array_map('strtolower', $sessionTags)
+        ));
     }
 
     /**
@@ -264,8 +267,10 @@ class SessionManager
     {
         $safeName = basename($name->toString());
 
-        if (! str_ends_with($safeName, '.json')) {
-            $safeName .= '.json';
+        foreach (File::glob($this->storagePath . '/*.json') as $file) {
+            if (strtolower(basename($file)) === basename($path)) {
+                return $file;
+            }
         }
 
         return $this->storagePath . '/' . $safeName;
