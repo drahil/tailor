@@ -131,8 +131,8 @@ test('handles command execution errors gracefully', function () {
     $this->app
         ->shouldReceive('execute')
         ->twice()
-        ->andReturnUsing(function ($code) {
-            if (str_contains($code, 'Exception')) {
+        ->andReturnUsing(function ($code, $throwExceptions = false) {
+            if (str_contains($code, 'Exception') && $throwExceptions) {
                 throw new Exception('test');
             }
             return null;
@@ -144,6 +144,39 @@ test('handles command execution errors gracefully', function () {
         ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)')
         ->and($this->tester->getDisplay())->toContain('(1 failed)')
         ->and($this->tester->getDisplay())->toContain('Failed to execute');
+});
+
+test('counts PHP errors such as parse errors as failures', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            ['code' => '$a =', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+        ],
+        variables: [],
+        sessionMetadata: []
+    );
+
+    $this->sessionManager
+        ->shouldReceive('load')
+        ->once()
+        ->andReturn($sessionData);
+
+    $this->formatter
+        ->shouldReceive('displayExecutionHeader')
+        ->once();
+
+    $this->app
+        ->shouldReceive('execute')
+        ->once()
+        ->with('$a =', true)
+        ->andThrow(new ParseError('syntax error, unexpected end of file'));
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getDisplay())->toContain('Executed 0 command(s) (1 failed)')
+        ->and($this->tester->getDisplay())->toContain('syntax error');
 });
 
 test('displays error when session does not exist', function () {
@@ -165,13 +198,13 @@ test('displays error for invalid session name', function () {
         ->and($this->tester->getDisplay())->toContain('Session name cannot be empty');
 });
 
-test('decodes URL-encoded commands before execution', function () {
+test('executes plain code unchanged', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'echo+%22hello%22', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            ['code' => '$i++ + 1 . sprintf("%20s", "x")', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
         ],
         variables: [],
         sessionMetadata: []
@@ -189,7 +222,39 @@ test('decodes URL-encoded commands before execution', function () {
     $this->app
         ->shouldReceive('execute')
         ->once()
-        ->with('echo "hello"')
+        ->with('$i++ + 1 . sprintf("%20s", "x")', true)
+        ->andReturn(null);
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getStatusCode())->toBe(0);
+});
+
+test('decodes legacy libedit-encoded commands before execution', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            ['code' => 'echo\\040"hello"', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+        ],
+        variables: [],
+        sessionMetadata: []
+    );
+
+    $this->sessionManager
+        ->shouldReceive('load')
+        ->once()
+        ->andReturn($sessionData);
+
+    $this->formatter
+        ->shouldReceive('displayExecutionHeader')
+        ->once();
+
+    $this->app
+        ->shouldReceive('execute')
+        ->once()
+        ->with('echo "hello"', true)
         ->andReturn(null);
 
     $this->tester->execute(['name' => 'test-session']);

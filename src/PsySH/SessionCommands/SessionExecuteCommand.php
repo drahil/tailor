@@ -9,6 +9,7 @@ use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 
 class SessionExecuteCommand extends SessionCommand
 {
@@ -71,14 +72,14 @@ class SessionExecuteCommand extends SessionCommand
                 try {
                     $output->writeln("<comment>>>> {$code}</comment>");
 
-                    $result = $shell->execute($code);
+                    $result = $shell->execute($code, true);
 
                     if ($result !== null) {
                         $shell->writeReturnValue($result);
                     }
 
                     $executedCount++;
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     $failedCount++;
                     $output->writeln("<error>Failed to execute: {$e->getMessage()}</error>");
                 }
