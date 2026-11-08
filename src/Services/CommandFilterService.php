@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use Illuminate\Contracts\Container\Singleton;
 
 /**
  * Filters commands based on predefined skip patterns.
@@ -12,7 +11,6 @@ use Illuminate\Contracts\Container\Singleton;
  * Determines which commands should be excluded from session
  * tracking and execution (e.g., internal commands, navigation).
  */
-#[Singleton]
 class CommandFilterService
 {
     /**

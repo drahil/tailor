@@ -6,10 +6,8 @@ namespace drahil\Tailor\Services;
 
 use DateTime;
 use DateTimeInterface;
-use Illuminate\Contracts\Container\Singleton;
 use Throwable;
 
-#[Singleton]
 class SessionTracker
 {
     /**

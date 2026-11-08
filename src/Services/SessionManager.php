@@ -9,7 +9,6 @@ use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Exception;
-use Illuminate\Contracts\Container\Singleton;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
@@ -21,7 +20,6 @@ use Throwable;
  * Handles saving, loading, listing, and deleting sessions
  * using a file-based storage system.
  */
-#[Singleton]
 class SessionManager
 {
     /**

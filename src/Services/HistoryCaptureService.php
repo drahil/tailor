@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use Illuminate\Contracts\Container\Singleton;
 use Psy\Util\Str;
 
 /**
@@ -13,7 +12,6 @@ use Psy\Util\Str;
  * Reads and processes shell history files to extract
  * commands for session tracking.
  */
-#[Singleton]
 readonly class HistoryCaptureService
 {
     private const LIBEDIT_HEADER = '_HiStOrY_V2_';
