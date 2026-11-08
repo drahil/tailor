@@ -407,3 +407,7 @@ test('removes duplicates when adding tags', function () {
         ->and($updatedData->metadata->tags)->toContain('api')
         ->and($updatedData->metadata->tags)->toContain('debug');
 });
+
+test('does not shadow the PsySH edit command', function () {
+    expect($this->command->getAliases())->not->toContain('edit');
+});

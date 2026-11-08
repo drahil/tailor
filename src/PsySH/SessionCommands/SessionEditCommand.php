@@ -23,7 +23,6 @@ class SessionEditCommand extends SessionCommand
         $this
             ->setName('session:edit')
             ->setDescription('Edit session metadata')
-            ->setAliases(['edit'])
             ->setHelp(<<<HELP
   Edit metadata of an existing session including description and tags.
 
