@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
+use DateTime;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\ValueObjects\SessionName;
@@ -74,6 +75,47 @@ class SessionManager
             tracker: $tracker
         );
 
+        $this->write($sessionPath, $sessionData);
+    }
+
+    /**
+     * Append commands to the end of an existing session.
+     *
+     * @param array<int, string> $commands
+     * @throws RuntimeException|FileNotFoundException|Exception
+     */
+    public function append(SessionName $name, array $commands): SessionData
+    {
+        $existing = $this->load($name);
+        $allCommands = $existing->commands;
+        $timestamp = (new DateTime())->format('Y-m-d H:i:s');
+
+        foreach ($commands as $code) {
+            $allCommands[] = [
+                'code' => $code,
+                'output' => null,
+                'timestamp' => $timestamp,
+                'order' => count($allCommands) + 1,
+            ];
+        }
+
+        $sessionData = new SessionData(
+            metadata: $existing->metadata->withUpdatedTimestamp(),
+            commands: $allCommands,
+            variables: $existing->variables,
+            sessionMetadata: [...$existing->sessionMetadata, 'total_commands' => count($allCommands)],
+        );
+
+        $this->write($this->getSessionPath($name), $sessionData);
+
+        return $sessionData;
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    private function write(string $sessionPath, SessionData $sessionData): void
+    {
         $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {

@@ -30,14 +30,18 @@ readonly class HistoryCaptureService
      */
     public function markSessionStart(SessionTracker $tracker, string $historyFile): void
     {
-        if (file_exists($historyFile)) {
-            $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-            $startLine = $lines !== false ? count($lines) : 0;
-        } else {
-            $startLine = 0;
-        }
+        $line = $this->countLines($historyFile);
 
-        $tracker->setSessionStartLine($startLine);
+        $tracker->setSessionStartLine($line);
+        $tracker->setAppendStartLine($line);
+    }
+
+    /**
+     * Mark the point after which session:append collects commands.
+     */
+    public function markAppendStart(SessionTracker $tracker, string $historyFile): void
+    {
+        $tracker->setAppendStartLine($this->countLines($historyFile));
     }
 
     /**
@@ -52,23 +56,40 @@ readonly class HistoryCaptureService
      */
     public function captureHistoryToTracker(SessionTracker $tracker, string $historyFile): void
     {
-        if (! file_exists($historyFile)) {
+        $lines = $this->readLines($historyFile);
+        if ($lines === null) {
             return;
         }
-
-        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-            return;
-        }
-
-        $isLibedit = ($lines[0] ?? null) === self::LIBEDIT_HEADER;
-
-        $sessionStartLine = $tracker->getSessionStartLine();
-        $currentSessionLines = array_slice($lines, $sessionStartLine);
 
         $tracker->clear();
 
-        foreach ($currentSessionLines as $entry) {
+        foreach ($this->extractCommands($lines, $tracker->getSessionStartLine()) as $command) {
+            $tracker->addCommand($command);
+        }
+    }
+
+    /**
+     * Get the commands recorded in the history file from the given line on.
+     *
+     * @return array<int, string>
+     */
+    public function captureCommandsSince(string $historyFile, int $startLine): array
+    {
+        $lines = $this->readLines($historyFile);
+
+        return $lines === null ? [] : $this->extractCommands($lines, $startLine);
+    }
+
+    /**
+     * @param array<int, string> $lines
+     * @return array<int, string>
+     */
+    private function extractCommands(array $lines, int $startLine): array
+    {
+        $isLibedit = ($lines[0] ?? null) === self::LIBEDIT_HEADER;
+        $commands = [];
+
+        foreach (array_slice($lines, $startLine) as $entry) {
             if ($entry === self::LIBEDIT_HEADER) {
                 continue;
             }
@@ -87,7 +108,28 @@ readonly class HistoryCaptureService
                 continue;
             }
 
-            $tracker->addCommand($entry);
+            $commands[] = $entry;
         }
+
+        return $commands;
+    }
+
+    /**
+     * @return array<int, string>|null
+     */
+    private function readLines(string $historyFile): ?array
+    {
+        if (! file_exists($historyFile)) {
+            return null;
+        }
+
+        $lines = file($historyFile, FILE_IGNORE_NEW_LINES);
+
+        return $lines === false ? null : $lines;
+    }
+
+    private function countLines(string $historyFile): int
+    {
+        return count($this->readLines($historyFile) ?? []);
     }
 }

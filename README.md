@@ -60,6 +60,14 @@ session:execute my-work                       # Run all commands from a session
 exec my-work                                  # Alias for session:execute
 ```
 
+**Add more commands to a session:**
+```bash
+session:execute my-work                       # Replay it; my-work becomes the active session
+# ...run a few more commands...
+session:append                                # Append the new commands to my-work
+session:append other-work                     # Append this run's new commands to another session
+```
+
 **Delete a session:**
 ```bash
 session:delete my-work                        # Delete a session (with confirmation)

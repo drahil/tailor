@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
+use drahil\Tailor\Services\HistoryCaptureService;
+use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
@@ -14,7 +16,11 @@ beforeEach(function () {
     $this->sessionManager = mockSessionManager();
     $this->formatter = Mockery::mock(SessionOutputFormatter::class);
 
-    $this->command = new SessionExecuteCommand($this->formatter);
+    $this->sessionTracker = new SessionTracker();
+    $this->historyCaptureService = Mockery::mock(HistoryCaptureService::class);
+    $this->historyCaptureService->shouldReceive('markAppendStart')->byDefault();
+
+    $this->command = new SessionExecuteCommand($this->historyCaptureService, $this->formatter);
 
     /* Mock the PsySH application */
     $definition = Mockery::mock(InputDefinition::class)->shouldIgnoreMissing();
@@ -23,6 +29,9 @@ beforeEach(function () {
     $this->app->shouldReceive('getScopeVariable')
         ->with('__sessionManager')
         ->andReturn($this->sessionManager);
+    $this->app->shouldReceive('getScopeVariable')
+        ->with('__sessionTracker')
+        ->andReturn($this->sessionTracker);
 
     $this->command->setApplication($this->app);
     $this->tester = createCommandTester($this->command);
@@ -294,4 +303,53 @@ test('displays execution output with command count', function () {
 
     expect($this->tester->getStatusCode())->toBe(0)
         ->and($this->tester->getDisplay())->toContain('Executed 3 command(s)');
+});
+
+test('makes the executed session active for session:append', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            ['code' => '$a = 1', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+        ],
+        variables: [],
+        sessionMetadata: []
+    );
+
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
+    $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+    $this->historyCaptureService
+        ->shouldReceive('markAppendStart')
+        ->once()
+        ->with($this->sessionTracker, Mockery::type('string'));
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->sessionTracker->getActiveSession())->toBe('test-session')
+        ->and($this->tester->getDisplay())->toContain("'test-session' is active. Use session:append");
+});
+
+test('still activates the session after failed replays, with a warning', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            ['code' => '$a =', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+        ],
+        variables: [],
+        sessionMetadata: []
+    );
+
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
+    $this->app->shouldReceive('execute')->once()->andThrow(new ParseError('syntax error'));
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->sessionTracker->getActiveSession())->toBe('test-session')
+        ->and($this->tester->getDisplay())->toContain('1 command(s) failed during replay');
 });

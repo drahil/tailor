@@ -63,3 +63,26 @@ test('captures only lines after the session start in libedit history', function 
 
     expect(capturedCode($this->tracker))->toBe(['$new = 2']);
 });
+
+test('captureCommandsSince returns commands after the given line', function () {
+    file_put_contents($this->historyFile, implode("\n", ['$a = 1', 'session:execute work', '$b = 2', 'append']) . "\n");
+
+    expect($this->service->captureCommandsSince($this->historyFile, 1))->toBe(['$b = 2']);
+});
+
+test('markAppendStart moves the append marker to the end of history', function () {
+    file_put_contents($this->historyFile, implode("\n", ['$a = 1', '$b = 2']) . "\n");
+
+    $this->service->markAppendStart($this->tracker, $this->historyFile);
+
+    expect($this->tracker->getAppendStartLine())->toBe(2);
+});
+
+test('markSessionStart sets both the session and append markers', function () {
+    file_put_contents($this->historyFile, implode("\n", ['$a = 1', '$b = 2', '$c = 3']) . "\n");
+
+    $this->service->markSessionStart($this->tracker, $this->historyFile);
+
+    expect($this->tracker->getSessionStartLine())->toBe(3)
+        ->and($this->tracker->getAppendStartLine())->toBe(3);
+});

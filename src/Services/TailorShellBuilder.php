@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Services;
 
 use drahil\Tailor\PsySH\AutoSaveLoopListener;
+use drahil\Tailor\PsySH\SessionCommands\SessionAppendCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
@@ -109,7 +110,8 @@ class TailorShellBuilder
         $config->addCommands([
             new SessionListCommand(),
             new SessionSaveCommand($this->historyCaptureService, $this->formatter),
-            new SessionExecuteCommand($this->formatter),
+            new SessionExecuteCommand($this->historyCaptureService, $this->formatter),
+            new SessionAppendCommand($this->historyCaptureService),
             new SessionDeleteCommand(),
             new SessionViewCommand($this->formatter),
             new SessionEditCommand(),
@@ -150,6 +152,7 @@ Available commands:
   session:save       Save current session
   session:view       View session details and commands
   session:execute    Execute a saved session
+  session:append     Append new commands to a saved session
   session:edit       Edit session metadata
   session:delete     Delete a saved session
 

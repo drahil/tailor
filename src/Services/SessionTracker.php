@@ -41,6 +41,16 @@ class SessionTracker
     protected int $sessionStartLine = 0;
 
     /**
+     * Saved session that new commands are appended to.
+     */
+    protected ?string $activeSession = null;
+
+    /**
+     * History line from which session:append collects commands.
+     */
+    protected int $appendStartLine = 0;
+
+    /**
      * Create a new SessionTracker instance.
      */
     public function __construct()
@@ -67,6 +77,26 @@ class SessionTracker
     public function getSessionStartLine(): int
     {
         return $this->sessionStartLine;
+    }
+
+    public function setActiveSession(?string $name): void
+    {
+        $this->activeSession = $name;
+    }
+
+    public function getActiveSession(): ?string
+    {
+        return $this->activeSession;
+    }
+
+    public function setAppendStartLine(int $line): void
+    {
+        $this->appendStartLine = $line;
+    }
+
+    public function getAppendStartLine(): int
+    {
+        return $this->appendStartLine;
     }
 
     /**

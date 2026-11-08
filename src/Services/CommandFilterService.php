@@ -22,6 +22,7 @@ class CommandFilterService
      */
     private const SKIP_PATTERNS = [
         '/^session:/',
+        '/^(sessions|save|exec|view|delete|append)(\s|$)/',
         '/^help\b/',
         '/^exit\b/',
         '/^quit\b/',

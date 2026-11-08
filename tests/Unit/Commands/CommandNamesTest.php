@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use drahil\Tailor\PsySH\SessionCommands\SessionAppendCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
@@ -18,7 +19,8 @@ test('bare command names are not buffered as incomplete PHP', function () {
     $commands = [
         new SessionListCommand(),
         new SessionSaveCommand(Mockery::mock(HistoryCaptureService::class), $formatter),
-        new SessionExecuteCommand($formatter),
+        new SessionExecuteCommand(Mockery::mock(HistoryCaptureService::class), $formatter),
+        new SessionAppendCommand(Mockery::mock(HistoryCaptureService::class)),
         new SessionDeleteCommand(),
         new SessionViewCommand($formatter),
         new SessionEditCommand(),

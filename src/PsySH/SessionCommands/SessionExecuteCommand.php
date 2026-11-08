@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
+use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
@@ -14,6 +15,7 @@ use Throwable;
 class SessionExecuteCommand extends SessionCommand
 {
     public function __construct(
+        private readonly HistoryCaptureService $historyCaptureService,
         private readonly SessionOutputFormatter $formatter
     ) {
         parent::__construct();
@@ -88,6 +90,14 @@ class SessionExecuteCommand extends SessionCommand
             $output->writeln('');
             $output->writeln("<info>Executed {$executedCount} command(s)" .
                 ($failedCount > 0 ? " ({$failedCount} failed)" : "") . "</info>");
+
+            $sessionTracker = $shell->getScopeVariable('__sessionTracker');
+            $this->historyCaptureService->markAppendStart($sessionTracker, storage_path('tailor/tailor_history'));
+            $sessionTracker->setActiveSession($sessionName->toString());
+
+            $output->writeln($failedCount > 0
+                ? "<comment>'{$sessionName}' is active, but {$failedCount} command(s) failed during replay. session:append will add new commands after them.</comment>"
+                : "<comment>'{$sessionName}' is active. Use session:append to add new commands to it.</comment>");
 
             return 0;
 
