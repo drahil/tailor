@@ -162,9 +162,13 @@ readonly class ClassDiscoveryService
             }
 
             if (in_array($tokens[$i][0], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+                if ($this->previousSignificantToken($tokens, $i) === T_DOUBLE_COLON) {
+                    continue;
+                }
+
                 for ($j = $i + 1; $j < $count; $j++) {
                     if (! is_array($tokens[$j])) {
-                        continue;
+                        break;
                     }
 
                     if ($tokens[$j][0] === T_WHITESPACE) {
@@ -182,5 +186,25 @@ readonly class ClassDiscoveryService
         }
 
         return $classes;
+    }
+
+    /**
+     * @param array<int, array{0: int, 1: string, 2: int}|string> $tokens
+     */
+    private function previousSignificantToken(array $tokens, int $index): int|string|null
+    {
+        for ($k = $index - 1; $k >= 0; $k--) {
+            $token = $tokens[$k];
+
+            if (! is_array($token)) {
+                return $token;
+            }
+
+            if (! in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+                return $token[0];
+            }
+        }
+
+        return null;
     }
 }
