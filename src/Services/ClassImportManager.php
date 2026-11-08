@@ -14,31 +14,56 @@ class ClassImportManager
      *   - App\Models\User (unique) -> class_alias('App\Models\User', 'User')
      *   - App\Models\User + App\Admin\User -> class_alias for ModelsUser and AdminUser
      *
+     * Aliases that are reserved or clash with each other are skipped.
+     *
      * @param array<string, string> $classes Map of FQN => file path
-     * @return array<string> Array of class_alias statements to execute
+     * @param array<int, string> $reservedNames Names that are already taken
+     * @return array{statements: array<int, string>, skipped: array<string, string>} Skipped is FQN => alias
      */
-    public function generateUseStatements(array $classes): array
+    public function generateAliases(array $classes, array $reservedNames = []): array
     {
-        $shortNameMap = $this->groupByShortName($classes);
-        $aliasStatements = [];
+        $aliases = $this->resolveAliases($classes);
+        $reserved = array_flip(array_map('strtolower', $reservedNames));
+        $aliasCounts = array_count_values(array_map('strtolower', $aliases));
 
-        foreach ($shortNameMap as $shortName => $fqnList) {
-            if (count($fqnList) === 1) {
-                $fqn = $fqnList[0];
-                $aliasStatements[] = "class_alias('{$fqn}', '{$shortName}');";
-            } else {
-                foreach ($fqnList as $fqn) {
-                    $alias = $this->generateAlias($fqn);
-                    $aliasStatements[] = "class_alias('{$fqn}', '{$alias}');";
-                }
+        $statements = [];
+        $skipped = [];
+
+        foreach ($aliases as $fqn => $alias) {
+            $key = strtolower($alias);
+
+            if (isset($reserved[$key]) || $aliasCounts[$key] > 1) {
+                $skipped[$fqn] = $alias;
+                continue;
             }
+
+            $statements[] = "try { class_alias('{$fqn}', '{$alias}'); } catch (\\Throwable) {}";
         }
 
-        return $aliasStatements;
+        return ['statements' => $statements, 'skipped' => $skipped];
     }
 
     /**
-     * Group fully qualified class names by their short name.
+     * @param array<string, string> $classes
+     * @return array<string, string> Map of FQN => alias
+     */
+    private function resolveAliases(array $classes): array
+    {
+        $aliases = [];
+
+        foreach ($this->groupByShortName($classes) as $fqnList) {
+            foreach ($fqnList as $fqn) {
+                $aliases[$fqn] = count($fqnList) === 1
+                    ? $this->getShortName($fqn)
+                    : $this->generateAlias($fqn);
+            }
+        }
+
+        return $aliases;
+    }
+
+    /**
+     * Group fully qualified class names by their short name, ignoring case.
      *
      * @param array<string, string> $classes
      * @return array<string, array<string>>
@@ -48,8 +73,7 @@ class ClassImportManager
         $grouped = [];
 
         foreach (array_keys($classes) as $fqn) {
-            $shortName = $this->getShortName($fqn);
-            $grouped[$shortName][] = $fqn;
+            $grouped[strtolower($this->getShortName($fqn))][] = $fqn;
         }
 
         return $grouped;
