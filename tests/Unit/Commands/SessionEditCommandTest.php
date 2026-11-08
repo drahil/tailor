@@ -411,3 +411,41 @@ test('removes duplicates when adding tags', function () {
 test('does not shadow the PsySH edit command', function () {
     expect($this->command->getAliases())->not->toContain('edit');
 });
+
+function editTagsOf(array $tags, array $options): ?SessionData
+{
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(name: SessionName::from('test-session'), tags: $tags),
+        commands: [['code' => 'test']],
+        variables: [],
+        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+    );
+
+    test()->sessionManager->shouldReceive('exists')->andReturn(true);
+    test()->sessionManager->shouldReceive('load')->andReturn($sessionData);
+
+    $updatedData = null;
+    test()->sessionManager
+        ->shouldReceive('update')
+        ->with(Mockery::on(function ($data) use (&$updatedData) {
+            $updatedData = $data;
+            return true;
+        }));
+
+    test()->tester->execute(['name' => 'test-session', ...$options]);
+
+    return $updatedData;
+}
+
+test('removes tags case-insensitively', function () {
+    expect(editTagsOf(['api', 'debug'], ['--remove-tag' => ['API']])?->metadata->tags)->toBe(['debug']);
+});
+
+test('adding an existing tag in another case is not a change', function () {
+    expect(editTagsOf(['api'], ['--add-tag' => ['API']]))->toBeNull()
+        ->and($this->tester->getDisplay())->toContain('No changes specified');
+});
+
+test('splits comma-separated tags in set-tags', function () {
+    expect(editTagsOf(['old'], ['--set-tags' => ['api,debug']])?->metadata->tags)->toBe(['api', 'debug']);
+});

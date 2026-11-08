@@ -170,3 +170,11 @@ test('validates tags when adding to collection', function () {
 
     $tags->add(['invalid tag']);
 })->throws(ValidationException::class);
+
+test('splits comma-separated tags', function () {
+    expect((new SessionTags(['api,debug', ' Testing , api ']))->toArray())->toBe(['api', 'debug', 'testing']);
+});
+
+test('removes comma-separated tags', function () {
+    expect(SessionTags::fromArray(['api', 'debug', 'testing'])->remove(['API,debug'])->toArray())->toBe(['testing']);
+});

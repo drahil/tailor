@@ -26,7 +26,7 @@ final readonly class SessionTags
     {
         $normalized = array_map(
             fn($tag) => $tag instanceof SessionTag ? $tag : SessionTag::from($tag),
-            $tags
+            self::splitCommaSeparated($tags)
         );
 
         $this->tags = $this->removeDuplicates($normalized);
@@ -117,7 +117,7 @@ final readonly class SessionTags
     {
         $toRemove = array_map(
             fn($tag) => $tag instanceof SessionTag ? $tag : SessionTag::from($tag),
-            $tags
+            self::splitCommaSeparated($tags)
         );
 
         $filtered = array_filter(
@@ -149,6 +149,30 @@ final readonly class SessionTags
         }
 
         return true;
+    }
+
+    /**
+     * @param array<string|SessionTag> $tags
+     * @return array<string|SessionTag>
+     */
+    private static function splitCommaSeparated(array $tags): array
+    {
+        $split = [];
+
+        foreach ($tags as $tag) {
+            if ($tag instanceof SessionTag) {
+                $split[] = $tag;
+                continue;
+            }
+
+            foreach (explode(',', $tag) as $part) {
+                if (trim($part) !== '') {
+                    $split[] = $part;
+                }
+            }
+        }
+
+        return $split;
     }
 
     /**
