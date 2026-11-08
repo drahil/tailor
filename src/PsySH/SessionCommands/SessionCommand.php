@@ -108,16 +108,9 @@ abstract class SessionCommand extends Command
         bool $required = true
     ): ?SessionName {
         try {
-            $sessionName = $required
-                ? SessionName::from($nameInput)
+            return $required
+                ? SessionName::from($nameInput ?? '')
                 : SessionName::fromNullable($nameInput);
-
-            if (! $sessionName && $required) {
-                $output->writeln('<error>Session name must be provided.</error>');
-                return null;
-            }
-
-            return $sessionName;
         } catch (ValidationException $e) {
             $output->writeln("<error>{$e->result->firstError()}</error>");
             return null;

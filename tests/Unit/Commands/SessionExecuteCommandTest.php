@@ -353,3 +353,10 @@ test('still activates the session after failed replays, with a warning', functio
     expect($this->sessionTracker->getActiveSession())->toBe('test-session')
         ->and($this->tester->getDisplay())->toContain('1 command(s) failed during replay');
 });
+
+test('displays error when no session name is given', function () {
+    $this->tester->execute([]);
+
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Session name cannot be empty');
+});
