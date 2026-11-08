@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace drahil\Tailor\Services;
 
 use drahil\Tailor\Support\DTOs\ImportResult;
-use Exception;
 use Illuminate\Foundation\AliasLoader;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 
 readonly class ClassAutoImporter
 {
@@ -37,10 +37,10 @@ readonly class ClassAutoImporter
             $includeFile = $this->fileManager->createIncludeFile($aliases['statements']);
 
             return ImportResult::success($includeFile);
-        } catch (Exception $e) {
-            $output->writeln('<error>Auto-import failed: ' . $e->getMessage() . '</error>');
-            $output->writeln('<error>at ' . $e->getFile() . ':' . $e->getLine() . '</error>');
-            return ImportResult::failed();
+        } catch (Throwable $e) {
+            $output->writeln("<error>Auto-import failed: {$e->getMessage()} at {$e->getFile()}:{$e->getLine()}</error>");
+            $output->writeln('<comment>Starting without auto-imported classes.</comment>');
+            return ImportResult::empty();
         }
     }
 

@@ -30,16 +30,12 @@ class TailorCommand extends Command
     {
         $importResult = $this->autoImporter->prepare($output);
 
-        if (! $importResult->isSuccessful()) {
-            return Command::FAILURE;
-        }
-
-        $shell = $this->shellBuilder->build($importResult);
-
-        $shell->run();
-
-        if ($importResult->hasIncludeFile()) {
-            $this->fileManager->cleanup($importResult->getIncludeFile());
+        try {
+            $this->shellBuilder->build($importResult)->run();
+        } finally {
+            if ($importResult->hasIncludeFile()) {
+                $this->fileManager->cleanup($importResult->getIncludeFile());
+            }
         }
 
         return Command::SUCCESS;
