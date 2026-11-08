@@ -110,6 +110,8 @@ class SessionManager
     }
 
     /**
+     * Write session data atomically through a temporary file and rename.
+     *
      * @throws RuntimeException
      */
     private function write(string $sessionPath, SessionData $sessionData): void
@@ -120,7 +122,21 @@ class SessionManager
             throw new RuntimeException('Failed to encode session data to JSON: ' . json_last_error_msg());
         }
 
-        if (File::put($sessionPath, $json) === false) {
+        $tempPath = @tempnam(dirname($sessionPath), 'tailor-session-');
+
+        if ($tempPath === false || file_put_contents($tempPath, $json) === false) {
+            if ($tempPath !== false) {
+                @unlink($tempPath);
+            }
+
+            throw new RuntimeException("Failed to write session to file: {$sessionPath}");
+        }
+
+        @chmod($tempPath, 0666 & ~umask());
+
+        if (! rename($tempPath, $sessionPath)) {
+            @unlink($tempPath);
+
             throw new RuntimeException("Failed to write session to file: {$sessionPath}");
         }
     }
@@ -232,16 +248,7 @@ class SessionManager
             );
         }
 
-        $sessionPath = $this->getSessionPath($sessionData->metadata->name);
-        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-        if ($json === false) {
-            throw new RuntimeException('Failed to encode session data: ' . json_last_error_msg());
-        }
-
-        if (File::put($sessionPath, $json) === false) {
-            throw new RuntimeException("Failed to update session: {$sessionPath}");
-        }
+        $this->write($this->getSessionPath($sessionData->metadata->name), $sessionData);
     }
 
     /**
@@ -265,7 +272,11 @@ class SessionManager
      */
     protected function getSessionPath(SessionName $name): string
     {
-        $safeName = basename($name->toString());
+        $path = $this->storagePath . '/' . $name->toString() . '.json';
+
+        if (file_exists($path)) {
+            return $path;
+        }
 
         foreach (File::glob($this->storagePath . '/*.json') as $file) {
             if (strtolower(basename($file)) === basename($path)) {
@@ -273,7 +284,7 @@ class SessionManager
             }
         }
 
-        return $this->storagePath . '/' . $safeName;
+        return $path;
     }
 
     /**
