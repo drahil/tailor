@@ -32,3 +32,19 @@ test('drops default matchers that Tailor replaces with filtered versions', funct
 
     expect(registeredMatchers($completer))->toBe([]);
 });
+
+test('completes namespaced command names at the start of the line', function () {
+    $completer = new TailorAutoCompleter();
+    $completer->setCommandNames(['session:ls', 'session:execute', 'session:edit', 'help']);
+
+    expect($completer->processCallback('session:e', 0, ['line_buffer' => 'session:e', 'end' => 9]))
+        ->toBe(['session:execute', 'session:edit']);
+});
+
+test('doubles a single command match so readline adds no trailing space', function () {
+    $completer = new TailorAutoCompleter();
+    $completer->setCommandNames(['session:ls', 'session:execute']);
+
+    expect($completer->processCallback('session:ex', 0, ['line_buffer' => 'session:ex', 'end' => 10]))
+        ->toBe(['session:execute', 'session:execute']);
+});

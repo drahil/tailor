@@ -40,6 +40,7 @@ class TailorShellBuilder
         $shell = new Shell($config);
 
         $this->setAutoCompleterContext($shell, $autoCompleter);
+        $autoCompleter->setCommandNames(array_keys($shell->all()));
 
         if ($importResult->hasIncludeFile()) {
             $shell->setIncludes([$importResult->getIncludeFile()]);
