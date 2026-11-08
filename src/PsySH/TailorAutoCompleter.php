@@ -13,10 +13,14 @@ use Psy\Context;
 use Psy\ContextAware;
 use Psy\TabCompletion\AutoCompleter;
 use Psy\TabCompletion\Matcher\AbstractMatcher;
+use Psy\TabCompletion\Matcher\ClassAttributesMatcher;
+use Psy\TabCompletion\Matcher\ClassMethodsMatcher;
 use Psy\TabCompletion\Matcher\ClassNamesMatcher;
 use Psy\TabCompletion\Matcher\ConstantsMatcher;
 use Psy\TabCompletion\Matcher\FunctionsMatcher;
 use Psy\TabCompletion\Matcher\KeywordsMatcher;
+use Psy\TabCompletion\Matcher\ObjectAttributesMatcher;
+use Psy\TabCompletion\Matcher\ObjectMethodsMatcher;
 use Psy\TabCompletion\Matcher\VariablesMatcher;
 
 /**
@@ -24,6 +28,19 @@ use Psy\TabCompletion\Matcher\VariablesMatcher;
  */
 class TailorAutoCompleter extends AutoCompleter implements ContextAware
 {
+    /** @var array<class-string<AbstractMatcher>> */
+    private const REPLACED_MATCHERS = [
+        ClassMethodsMatcher::class,
+        ClassAttributesMatcher::class,
+        ObjectMethodsMatcher::class,
+        ObjectAttributesMatcher::class,
+        ClassNamesMatcher::class,
+        VariablesMatcher::class,
+        ConstantsMatcher::class,
+        KeywordsMatcher::class,
+        FunctionsMatcher::class,
+    ];
+
     /** @var AbstractMatcher[] */
     private array $customMatchers = [];
 
@@ -68,11 +85,15 @@ class TailorAutoCompleter extends AutoCompleter implements ContextAware
     }
 
     /**
-     * Override addMatcher to prevent Shell from adding default matchers.
+     * Skip defaults that Tailor replaces with its own matchers.
      */
     public function addMatcher($matcher): void
     {
-        /** Intentionally empty - prevents Shell from adding default matchers */
+        if (in_array(get_class($matcher), self::REPLACED_MATCHERS, true)) {
+            return;
+        }
+
+        parent::addMatcher($matcher);
     }
 
     /**
