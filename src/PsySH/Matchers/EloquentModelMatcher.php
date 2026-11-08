@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace drahil\Tailor\PsySH\Matchers;
 
 use Exception;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Psy\TabCompletion\Matcher\AbstractContextAwareMatcher;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionNamedType;
 use Throwable;
 
 /**
@@ -133,7 +136,10 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
             return [];
         }
 
-        return $this->getQueryBuilderCompletions($input);
+        return array_values(array_unique(array_merge(
+            $this->getScopeCompletions($reflection, $input),
+            $this->getQueryBuilderCompletions($input)
+        )));
     }
 
     /**
@@ -149,6 +155,7 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
 
         $completions = array_merge($completions, $this->getAttributeCompletions($model, $input));
         $completions = array_merge($completions, $this->getAccessorCompletions($model, $input));
+        $completions = array_merge($completions, $this->getScopeCompletions(new ReflectionClass($model), $input));
         $completions = array_merge($completions, $this->getMethodCompletions($model, $input));
         $completions = array_merge($completions, $this->getQueryBuilderCompletions($input));
 
@@ -181,16 +188,51 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
         $reflection = new ReflectionClass($model);
         $accessors = [];
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+        foreach ($reflection->getMethods() as $method) {
             $methodName = $method->getName();
 
-            if (preg_match('/^get(\w+)Attribute$/', $methodName, $matches)) {
-                $propertyName = $this->snakeCase($matches[1]);
-                $accessors[] = $propertyName;
+            if ($method->isPublic() && preg_match('/^get(\w+)Attribute$/', $methodName, $matches)) {
+                $accessors[] = $this->snakeCase($matches[1]);
+            } elseif ($this->returnsAttribute($method)) {
+                $accessors[] = $this->snakeCase($methodName);
             }
         }
 
         return $this->filterByPrefix($accessors, $input);
+    }
+
+    /**
+     * Get local scope completions, from #[Scope] methods and scopeXxx methods.
+     *
+     * @param ReflectionClass<object> $reflection
+     * @return array<string>
+     */
+    private function getScopeCompletions(ReflectionClass $reflection, string $input): array
+    {
+        $scopes = [];
+
+        foreach ($reflection->getMethods() as $method) {
+            if ($method->isStatic()) {
+                continue;
+            }
+
+            if ($method->getAttributes(Scope::class) !== []) {
+                $scopes[] = $method->getName();
+            } elseif (preg_match('/^scope(\w+)$/', $method->getName(), $matches)) {
+                $scopes[] = lcfirst($matches[1]);
+            }
+        }
+
+        return $this->filterByPrefix($scopes, $input);
+    }
+
+    private function returnsAttribute(ReflectionMethod $method): bool
+    {
+        $returnType = $method->getReturnType();
+
+        return $returnType instanceof ReflectionNamedType
+            && $returnType->getName() === Attribute::class
+            && $method->getNumberOfRequiredParameters() === 0;
     }
 
     /**
