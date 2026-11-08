@@ -107,7 +107,7 @@ class SessionTracker
     }
 
     /**
-     * Clear all tracked commands.
+     * Clear all tracked commands, keeping the session start time.
      *
      * @return void
      */
@@ -115,7 +115,6 @@ class SessionTracker
     {
         $this->commands = [];
         $this->variables = [];
-        $this->startedAt = new DateTime();
     }
 
     /**

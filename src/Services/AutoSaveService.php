@@ -15,11 +15,16 @@ class AutoSaveService
 
     protected bool $hasAutoSaved = false;
 
+    protected int $lastSavedCommandCount = 0;
+
+    protected int $lastSavedAt;
+
     public function __construct(
         protected SessionManager $sessionManager,
         protected SessionTracker $sessionTracker,
         protected HistoryCaptureService $historyCaptureService,
     ) {
+        $this->lastSavedAt = time();
     }
 
     public function shouldAutoSave(): bool
@@ -34,10 +39,13 @@ class AutoSaveService
         $historyFile = storage_path('tailor/tailor_history');
         $this->historyCaptureService->captureHistoryToTracker($this->sessionTracker, $historyFile);
 
-        $commandCount = $this->sessionTracker->getCommandCount();
-        $duration = $this->sessionTracker->getDuration();
+        $unsavedCommands = $this->sessionTracker->getCommandCount() - $this->lastSavedCommandCount;
 
-        return $commandCount >= $minCommands || $duration >= $maxInterval;
+        if ($unsavedCommands <= 0) {
+            return false;
+        }
+
+        return $unsavedCommands >= $minCommands || time() - $this->lastSavedAt >= $maxInterval;
     }
 
     public function performAutoSave(): void
@@ -62,6 +70,8 @@ class AutoSaveService
 
         $this->sessionManager->save($metadata, $this->sessionTracker);
         $this->hasAutoSaved = true;
+        $this->lastSavedCommandCount = $this->sessionTracker->getCommandCount();
+        $this->lastSavedAt = time();
     }
 
     public function hasAutoSaved(): bool
