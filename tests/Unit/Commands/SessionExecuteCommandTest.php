@@ -360,3 +360,102 @@ test('displays error when no session name is given', function () {
     expect($this->tester->getStatusCode())->toBe(1)
         ->and($this->tester->getDisplay())->toContain('Session name cannot be empty');
 });
+
+function productionSession(array $tags = []): SessionData
+{
+    return new SessionData(
+        metadata: new SessionMetadata(name: SessionName::from('cleanup'), tags: $tags),
+        commands: [['code' => 'User::query()->delete()', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1]],
+        variables: [],
+        sessionMetadata: []
+    );
+}
+
+describe('in production', function () {
+    beforeEach(function () {
+        config(['app.env' => 'production']);
+        $this->formatter->shouldReceive('displayExecutionHeader')->byDefault();
+    });
+
+    afterEach(function () {
+        config(['app.env' => null]);
+    });
+
+    test('lists the commands and cancels an untagged session when declined', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands')->once();
+        $this->app->shouldNotReceive('execute');
+
+        $this->tester->setInputs(['n']);
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())
+            ->toContain("You are in production and 'cleanup' is not tagged 'safe-for-prod'.")
+            ->toContain('Execute it anyway? [y/N]')
+            ->toContain('Execution cancelled.');
+    });
+
+    test('cancels an untagged session when input ends without an answer', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands');
+        $this->app->shouldNotReceive('execute');
+
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->toContain('Execution cancelled.');
+    });
+
+    test('executes an untagged session when confirmed', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands');
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->setInputs(['y']);
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->toContain('Executed 1 command(s)');
+    });
+
+    test('executes a session tagged safe-for-prod without asking', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession(['Safe-For-Prod']));
+        $this->formatter->shouldNotReceive('displayCommands');
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?')
+            ->toContain('Executed 1 command(s)');
+    });
+
+    test('uses the configured safe tag', function () {
+        config(['tailor.production.safe_tag' => 'reviewed']);
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession(['reviewed']));
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup']);
+        config(['tailor.production.safe_tag' => null]);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
+    });
+
+    test('executes an untagged session without asking when forced', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup', '--force' => true]);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
+    });
+});
+
+test('does not ask outside production', function () {
+    config(['app.env' => 'local']);
+    $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+    $this->formatter->shouldReceive('displayExecutionHeader');
+    $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+    $this->tester->execute(['name' => 'cleanup']);
+    config(['app.env' => null]);
+
+    expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
+});

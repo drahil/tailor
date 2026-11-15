@@ -68,6 +68,15 @@ session:append                                # Append the new commands to my-wo
 session:append other-work                     # Append this run's new commands to another session
 ```
 
+**Running sessions in production:**
+
+In production (`APP_ENV=production`), `session:execute` lists the session's commands and asks for confirmation unless the session is tagged `safe-for-prod`.
+```bash
+session:edit my-work --add-tag safe-for-prod  # Mark a reviewed session as safe to run in production
+session:execute my-work --force               # Run an untagged session in production without asking
+```
+The tag can be changed with `tailor.production.safe_tag` in `config/tailor.php`.
+
 **Delete a session:**
 ```bash
 session:delete my-work                        # Delete a session (with confirmation)

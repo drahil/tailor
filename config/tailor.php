@@ -77,6 +77,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Production Configuration
+    |--------------------------------------------------------------------------
+    |
+    | In production, session:execute asks for confirmation before running a
+    | session unless the session has this tag.
+    |
+    */
+
+    'production' => [
+        'safe_tag' => 'safe-for-prod',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Class Discovery Configuration
     |--------------------------------------------------------------------------
     |
