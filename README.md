@@ -86,7 +86,22 @@ delete my-work -f                             # Short flag version
 
 ## Configuration
 
-Tailor uses sensible defaults for session storage. Sessions are stored in `storage/tailor/sessions` by default.
+Tailor uses sensible defaults for session storage. Sessions are stored in `storage/tailor/sessions` by default, one PHP file per session that you can edit directly:
+
+```php
+<?php
+/**
+ * @description Quick numbers about posts
+ * @tags stats, safe-for-prod
+ * @created 2026-11-15T21:54:00+00:00
+ * @updated 2026-11-15T21:56:00+00:00
+ */
+
+Post::count();
+Post::published()->count();
+```
+
+Each statement is one command, and statements can span several lines. Sessions saved as JSON by earlier versions are converted automatically.
 
 You can customize storage paths by publishing the configuration file:
 ```bash

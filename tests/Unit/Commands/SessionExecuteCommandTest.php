@@ -47,11 +47,9 @@ test('executes session commands successfully', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'echo "test"', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => '$x = 5', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
+            'echo "test"',
+            '$x = 5',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -82,50 +80,15 @@ test('executes session commands successfully', function () {
         ->and($this->tester->getDisplay())->toContain('Executed 2 command(s)');
 });
 
-test('skips history marker commands', function () {
-    $sessionData = new SessionData(
-        metadata: new SessionMetadata(
-            name: SessionName::from('test-session'),
-        ),
-        commands: [
-            ['code' => '_HiStOrY_V2_', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => 'echo "test"', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
-        ],
-        variables: [],
-        sessionMetadata: []
-    );
-
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->once()
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayExecutionHeader')
-        ->once();
-
-    $this->app
-        ->shouldReceive('execute')
-        ->once()
-        ->andReturn(null);
-
-    $this->tester->execute(['name' => 'test-session']);
-
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)');
-});
-
 test('handles command execution errors gracefully', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'throw new Exception("test")', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => 'echo "ok"', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
+            'throw new Exception("test")',
+            'echo "ok"',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -161,10 +124,8 @@ test('counts PHP errors such as parse errors as failures', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$a =', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            '$a =',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -213,10 +174,8 @@ test('executes plain code unchanged', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$i++ + 1 . sprintf("%20s", "x")', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            '$i++ + 1 . sprintf("%20s", "x")',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -239,50 +198,16 @@ test('executes plain code unchanged', function () {
     expect($this->tester->getStatusCode())->toBe(0);
 });
 
-test('decodes legacy libedit-encoded commands before execution', function () {
-    $sessionData = new SessionData(
-        metadata: new SessionMetadata(
-            name: SessionName::from('test-session'),
-        ),
-        commands: [
-            ['code' => 'echo\\040"hello"', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-        ],
-        variables: [],
-        sessionMetadata: []
-    );
-
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->once()
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayExecutionHeader')
-        ->once();
-
-    $this->app
-        ->shouldReceive('execute')
-        ->once()
-        ->with('echo "hello"', true)
-        ->andReturn(null);
-
-    $this->tester->execute(['name' => 'test-session']);
-
-    expect($this->tester->getStatusCode())->toBe(0);
-});
-
 test('displays execution output with command count', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$a = 1', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => '$b = 2', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
-            ['code' => '$c = 3', 'output' => null, 'timestamp' => '2025-01-15 10:00:02', 'order' => 3],
+            '$a = 1',
+            '$b = 2',
+            '$c = 3',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -311,10 +236,8 @@ test('makes the executed session active for session:append', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$a = 1', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            '$a = 1',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
@@ -338,10 +261,8 @@ test('still activates the session after failed replays, with a warning', functio
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$a =', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            '$a =',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
@@ -365,9 +286,7 @@ function productionSession(array $tags = []): SessionData
 {
     return new SessionData(
         metadata: new SessionMetadata(name: SessionName::from('cleanup'), tags: $tags),
-        commands: [['code' => 'User::query()->delete()', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1]],
-        variables: [],
-        sessionMetadata: []
+        commands: ['User::query()->delete()'],
     );
 }
 

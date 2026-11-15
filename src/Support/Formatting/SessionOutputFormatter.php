@@ -25,7 +25,6 @@ final class SessionOutputFormatter
     public function displayMetadata(OutputInterface $output, SessionData $sessionData): void
     {
         $metadata = $sessionData->metadata;
-        $sessionMeta = $sessionData->sessionMetadata;
 
         $output->writeln('<fg=yellow>Metadata:</>');
         $output->writeln('');
@@ -40,29 +39,12 @@ final class SessionOutputFormatter
 
         $output->writeln("  <fg=cyan>Commands:</>     {$sessionData->getCommandCount()}");
 
-        if (isset($sessionMeta['project_path'])) {
-            $output->writeln("  <fg=cyan>Project:</>      {$sessionMeta['project_path']}");
-        }
-
         if ($metadata->createdAt) {
             $output->writeln("  <fg=cyan>Created:</>      {$metadata->createdAt->format('Y-m-d H:i:s')}");
         }
 
         if ($metadata->updatedAt) {
             $output->writeln("  <fg=cyan>Updated:</>      {$metadata->updatedAt->format('Y-m-d H:i:s')}");
-        }
-
-        if ($metadata->laravelVersion) {
-            $output->writeln("  <fg=cyan>Laravel:</>      {$metadata->laravelVersion}");
-        }
-
-        if ($metadata->phpVersion) {
-            $output->writeln("  <fg=cyan>PHP:</>          {$metadata->phpVersion}");
-        }
-
-        if (isset($sessionMeta['duration_seconds'])) {
-            $duration = round($sessionMeta['duration_seconds'], 2);
-            $output->writeln("  <fg=cyan>Duration:</>     {$duration}s");
         }
     }
 
@@ -71,14 +53,10 @@ final class SessionOutputFormatter
      *
      * @param OutputInterface $output
      * @param SessionData $sessionData
-     * @param callable|null $codeDecoder Optional decoder for command code
      * @return void
      */
-    public function displayCommands(
-        OutputInterface $output,
-        SessionData $sessionData,
-        ?callable $codeDecoder = null
-    ): void {
+    public function displayCommands(OutputInterface $output, SessionData $sessionData): void
+    {
         $commandCount = $sessionData->getCommandCount();
         $output->writeln("<fg=yellow>Commands:</> <fg=gray>({$commandCount} total)</>");
         $output->writeln('');
@@ -90,40 +68,11 @@ final class SessionOutputFormatter
 
         $output->writeln('<fg=gray>─────────────────────────────────────────────────────────────────────────────────</>');
 
-        foreach ($sessionData->commands as $command) {
-            $code = $codeDecoder ? $codeDecoder($command['code']) : $command['code'];
-
-            if ($code === '_HiStOrY_V2_') {
-                continue;
-            }
-
+        foreach ($sessionData->commands as $code) {
             $output->writeln($code);
         }
 
         $output->writeln('<fg=gray>─────────────────────────────────────────────────────────────────────────────────</>');
-    }
-
-    /**
-     * Format and display session variables section.
-     *
-     * @param OutputInterface $output
-     * @param array<string, array{type: string, class: string|null, value: string|null}> $variables
-     * @return void
-     */
-    public function displayVariables(OutputInterface $output, array $variables): void
-    {
-        $output->writeln('<fg=yellow>Variables:</>');
-        $output->writeln('');
-
-        if (empty($variables)) {
-            $output->writeln('  <comment>No variables saved</comment>');
-            return;
-        }
-
-        foreach ($variables as $name => $value) {
-            $valueStr = VariableFormatter::format($value);
-            $output->writeln("  <fg=cyan>\${$name}</>  =  {$valueStr}");
-        }
     }
 
     /**

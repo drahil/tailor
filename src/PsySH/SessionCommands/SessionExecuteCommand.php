@@ -80,13 +80,7 @@ class SessionExecuteCommand extends SessionCommand
             $executedCount = 0;
             $failedCount = 0;
 
-            foreach ($sessionData->commands as $command) {
-                $code = $this->decodeCommandCode($command['code']);
-
-                if ($code === '_HiStOrY_V2_') {
-                    continue;
-                }
-
+            foreach ($sessionData->commands as $code) {
                 try {
                     $output->writeln("<comment>>>> {$code}</comment>");
 
@@ -136,7 +130,7 @@ class SessionExecuteCommand extends SessionCommand
 
         $output->writeln("<comment>You are in production and '{$sessionData->metadata->name}' is not tagged '{$safeTag}'.</comment>");
         $output->writeln('');
-        $this->formatter->displayCommands($output, $sessionData, fn (string $code) => $this->decodeCommandCode($code));
+        $this->formatter->displayCommands($output, $sessionData);
         $output->writeln('');
 
         return $this->confirm($input, $output, 'Execute it anyway?');

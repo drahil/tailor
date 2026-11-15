@@ -78,12 +78,7 @@ class SessionViewCommand extends SessionCommand
         $this->formatter->displayMetadata($output, $sessionData);
         $output->writeln('');
 
-        $this->formatter->displayCommands($output, $sessionData, fn($code) => $this->decodeCommandCode($code));
+        $this->formatter->displayCommands($output, $sessionData);
         $output->writeln('');
-
-        if ($sessionData->hasVariables() && count($sessionData->variables) > 0) {
-            $this->formatter->displayVariables($output, $sessionData->variables);
-            $output->writeln('');
-        }
     }
 }

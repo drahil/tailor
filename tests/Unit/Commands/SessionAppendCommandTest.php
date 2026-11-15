@@ -37,14 +37,12 @@ function sessionWithCommands(string $name, int $count): SessionData
 {
     $commands = [];
     for ($i = 1; $i <= $count; $i++) {
-        $commands[] = ['code' => "\$v{$i} = {$i}", 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => $i];
+        $commands[] = "\$v{$i} = {$i}";
     }
 
     return new SessionData(
         metadata: new SessionMetadata(name: SessionName::from($name)),
         commands: $commands,
-        variables: [],
-        sessionMetadata: [],
     );
 }
 

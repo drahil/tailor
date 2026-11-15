@@ -64,8 +64,6 @@ class AutoSaveService
             tags: ['auto-saved'],
             createdAt: new DateTime(),
             updatedAt: new DateTime(),
-            laravelVersion: app()->version(),
-            phpVersion: PHP_VERSION,
         );
 
         $this->sessionManager->save($metadata, $this->sessionTracker);

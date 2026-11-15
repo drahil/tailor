@@ -119,16 +119,9 @@ class SessionEditCommand extends SessionCommand
                 tags: $tags->toArray(),
                 createdAt: $metadata->createdAt,
                 updatedAt: new DateTime(),
-                laravelVersion: $metadata->laravelVersion,
-                phpVersion: $metadata->phpVersion,
             );
 
-            $updatedSessionData = new SessionData(
-                metadata: $updatedMetadata,
-                commands: $sessionData->commands,
-                variables: $sessionData->variables,
-                sessionMetadata: $sessionData->sessionMetadata
-            );
+            $updatedSessionData = new SessionData($updatedMetadata, $sessionData->commands);
 
             $sessionManager->update($updatedSessionData);
 

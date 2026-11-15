@@ -18,7 +18,7 @@ afterEach(function () {
 
 function capturedCode(SessionTracker $tracker): array
 {
-    return array_column($tracker->getCommands(), 'code');
+    return $tracker->getCommands();
 }
 
 test('captures readline history lines as-is', function () {

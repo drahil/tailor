@@ -8,7 +8,6 @@ use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Command\Command;
-use Psy\Util\Str;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -117,15 +116,4 @@ abstract class SessionCommand extends Command
         }
     }
 
-    /**
-     * Decode libedit-encoded code from sessions saved before history was decoded on capture.
-     */
-    protected function decodeCommandCode(string $code): string
-    {
-        if (str_contains($code, '\\040')) {
-            return Str::unvis($code);
-        }
-
-        return $code;
-    }
 }
