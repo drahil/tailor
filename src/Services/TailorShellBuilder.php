@@ -187,7 +187,7 @@ Available commands:
   session:edit       Edit session metadata
   session:rename     Rename a saved session
   session:delete     Delete a saved session
-  session:export     Export a session as a script or Artisan command
+  session:export     Export a session as an Artisan command
 
 Type 'help' for more commands
 MESSAGE;

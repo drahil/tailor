@@ -14,14 +14,10 @@ use PhpParser\ParserFactory;
 use ReflectionClass;
 
 /**
- * Turns a saved session into a standalone PHP script or an Artisan command class.
+ * Turns a saved session into an Artisan command class.
  */
 class SessionExporter
 {
-    public const SCRIPT = 'script';
-    public const COMMAND = 'command';
-    public const FORMATS = [self::SCRIPT, self::COMMAND];
-
     /**
      * Class names that could not be resolved during the last export.
      *
@@ -34,14 +30,11 @@ class SessionExporter
      */
     public function __construct(private readonly array $aliases = []) {}
 
-    public function export(SessionData $session, string $format, string $namespace = ''): string
+    public function export(SessionData $session, string $namespace): string
     {
         $code = implode("\n", array_map(SessionFile::renderCommand(...), $session->commands));
-        $imports = $this->imports($code, $format === self::COMMAND);
 
-        return $format === self::COMMAND
-            ? $this->renderCommand($session, $code, $imports, $namespace)
-            : $this->renderScript($session, $code, $imports);
+        return $this->renderCommand($session, $code, $this->imports($code), $namespace);
     }
 
     /**
@@ -59,17 +52,61 @@ class SessionExporter
         return ctype_digit($class[0] ?? '') ? 'Session' . $class : $class;
     }
 
-    public static function fileName(string $sessionName, string $format): string
+    public static function fileName(string $sessionName): string
     {
-        return ($format === self::COMMAND ? self::className($sessionName) : $sessionName) . '.php';
+        return self::className($sessionName) . '.php';
     }
 
     /**
-     * @param array<int, string> $imports
+     * Namespace of a folder according to Composer's PSR-4 map, or null when it is not autoloaded.
+     *
+     * @param array<string, array<int, string>> $psr4 Namespace prefix => folders
      */
-    private function renderScript(SessionData $session, string $code, array $imports): string
+    public static function namespaceFor(string $directory, array $psr4): ?string
     {
-        return "<?php\n\n" . $this->renderImports($imports) . $this->renderDescription($session) . $code . "\n";
+        $directory = self::normalizePath($directory);
+        $match = null;
+
+        foreach ($psr4 as $prefix => $folders) {
+            foreach ($folders as $folder) {
+                $folder = self::normalizePath($folder);
+
+                if (($directory === $folder || str_starts_with($directory, $folder . '/'))
+                    && ($match === null || strlen($folder) > strlen($match[1]))) {
+                    $match = [$prefix, $folder];
+                }
+            }
+        }
+
+        if ($match === null) {
+            return null;
+        }
+
+        $segments = array_filter(explode('/', substr($directory, strlen($match[1]))), fn (string $segment) => $segment !== '');
+
+        foreach ($segments as $segment) {
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $segment) !== 1) {
+                return null;
+            }
+        }
+
+        return rtrim($match[0] . implode('\\', $segments), '\\');
+    }
+
+    /**
+     * Absolute path with symlinks resolved, also for folders that do not exist yet.
+     */
+    private static function normalizePath(string $path): string
+    {
+        $path = str_starts_with($path, '/') ? $path : getcwd() . '/' . $path;
+        $missing = [];
+
+        while (($real = realpath($path)) === false && dirname($path) !== $path) {
+            array_unshift($missing, basename($path));
+            $path = dirname($path);
+        }
+
+        return rtrim(implode('/', [$real === false ? $path : $real, ...$missing]), '/');
     }
 
     /**
@@ -126,33 +163,21 @@ class SessionExporter
         return implode("\n", array_map(fn (string $import) => "use {$import};", $imports)) . "\n\n";
     }
 
-    private function renderDescription(SessionData $session): string
-    {
-        $description = $session->metadata->description?->toString();
-
-        return $description === null ? '' : "// {$description}\n\n";
-    }
-
     /**
-     * Imports for the unqualified class names in the code.
-     *
-     * Scripts only import Tailor's aliases, as facades and global classes work there by short name.
-     * Commands live in a namespace, so every class name has to be imported.
+     * Imports for the unqualified class names in the code, as the command lives in a namespace.
      *
      * @return array<int, string>
      */
-    private function imports(string $code, bool $importEverything): array
+    private function imports(string $code): array
     {
         $this->unresolved = [];
         $imports = [];
 
         foreach ($this->classNames($code) as $name) {
-            $fqn = $this->aliases[$name] ?? ($importEverything ? $this->resolveDeclared($name) : null);
+            $fqn = $this->aliases[$name] ?? $this->resolveDeclared($name);
 
             if ($fqn === null) {
-                if ($importEverything) {
-                    $this->unresolved[] = $name;
-                }
+                $this->unresolved[] = $name;
                 continue;
             }
 

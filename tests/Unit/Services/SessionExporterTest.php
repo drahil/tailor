@@ -36,35 +36,12 @@ function parsesAsPhp(string $code): bool
     return true;
 }
 
-test('exports a script that imports Tailor aliases and leaves the code unchanged', function () {
-    $script = exporter()->export(exportSession([
-        'Post::count();',
-        '$user = new ModelsUser();',
-        'DB::table("posts")->count();',
-    ], 'Quick numbers'), SessionExporter::SCRIPT);
-
-    expect($script)->toBe(<<<'PHP'
-    <?php
-
-    use App\Models\User as ModelsUser;
-    use drahil\Tailor\Tests\Unit\Services\ExportTestPost as Post;
-
-    // Quick numbers
-
-    Post::count();
-    $user = new ModelsUser();
-    DB::table("posts")->count();
-
-    PHP)
-        ->and(parsesAsPhp($script))->toBeTrue();
-});
-
 test('adds missing semicolons to commands saved without them', function () {
-    expect(exporter()->export(exportSession(['$a = 1']), SessionExporter::SCRIPT))->toContain("\$a = 1;\n");
+    expect(exporter()->export(exportSession(['$a = 1']), 'App'))->toContain("        \$a = 1;\n");
 });
 
 test('exports an Artisan command that asks in production and declares --force', function () {
-    $command = exporter()->export(exportSession(['Post::count();']), SessionExporter::COMMAND, 'App\\Console\\Commands');
+    $command = exporter()->export(exportSession(['Post::count();']), 'App\\Console\\Commands');
 
     expect($command)
         ->toContain('namespace App\\Console\\Commands;')
@@ -77,23 +54,20 @@ test('exports an Artisan command that asks in production and declares --force', 
         ->and(parsesAsPhp($command))->toBeTrue();
 });
 
-test('imports global classes and facade aliases in commands, but not in scripts', function () {
+test('imports global classes and facade aliases', function () {
     class_alias(\Illuminate\Support\Str::class, 'ExportTestStr');
-    $session = exportSession(['throw new Exception(ExportTestStr::upper("x"));']);
 
-    $command = exporter()->export($session, SessionExporter::COMMAND, 'App\\Console\\Commands');
-    $script = exporter()->export($session, SessionExporter::SCRIPT);
+    $command = exporter()->export(exportSession(['throw new Exception(ExportTestStr::upper("x"));']), 'App\\Console\\Commands');
 
     expect($command)->toContain("use Exception;\n")
-        ->toContain("use Illuminate\\Support\\Str as ExportTestStr;\n")
-        ->and($script)->not->toContain('use ');
+        ->toContain("use Illuminate\\Support\\Str as ExportTestStr;\n");
 });
 
 test('collects class names from type hints, catch blocks and ::class', function () {
     $command = exporter()->export(exportSession([
         'try { $f = fn (?ArrayObject $o): Countable => $o; } catch (RuntimeException $e) {}',
         '$c = Post::class;',
-    ]), SessionExporter::COMMAND, 'App');
+    ]), 'App');
 
     expect($command)->toContain("use ArrayObject;\n")
         ->toContain("use Countable;\n")
@@ -103,13 +77,13 @@ test('collects class names from type hints, catch blocks and ::class', function 
 
 test('reports class names it cannot resolve in commands', function () {
     $exporter = exporter();
-    $exporter->export(exportSession(['NoSuchThing::run();', 'strlen("x");']), SessionExporter::COMMAND, 'App');
+    $exporter->export(exportSession(['NoSuchThing::run();', 'strlen("x");']), 'App');
 
     expect($exporter->getUnresolved())->toBe(['NoSuchThing']);
 });
 
 test('uses the session description in the command', function () {
-    $command = exporter()->export(exportSession(['$a = 1;'], "Count the author's posts"), SessionExporter::COMMAND, 'App');
+    $command = exporter()->export(exportSession(['$a = 1;'], "Count the author's posts"), 'App');
 
     expect($command)->toContain("protected \$description = 'Count the author\\'s posts';")
         ->and(parsesAsPhp($command))->toBeTrue();
@@ -118,6 +92,35 @@ test('uses the session description in the command', function () {
 test('builds class and file names from the session name', function () {
     expect(SessionExporter::className('blog-stats'))->toBe('BlogStats')
         ->and(SessionExporter::className('2024_report'))->toBe('Session2024Report')
-        ->and(SessionExporter::fileName('blog-stats', SessionExporter::SCRIPT))->toBe('blog-stats.php')
-        ->and(SessionExporter::fileName('blog-stats', SessionExporter::COMMAND))->toBe('BlogStats.php');
+        ->and(SessionExporter::fileName('blog-stats'))->toBe('BlogStats.php');
+});
+
+test('works out the namespace of a folder from the PSR-4 map', function () {
+    $root = sys_get_temp_dir() . '/tailor-psr4-' . uniqid();
+    mkdir("{$root}/app/Console", 0755, true);
+    mkdir("{$root}/src", 0755, true);
+    $psr4 = ['App\\' => ["{$root}/app"], 'App\\Console\\Special\\' => ["{$root}/src"]];
+
+    expect(SessionExporter::namespaceFor("{$root}/app/Console/Commands/Tailor", $psr4))->toBe('App\\Console\\Commands\\Tailor')
+        ->and(SessionExporter::namespaceFor("{$root}/app/", $psr4))->toBe('App')
+        ->and(SessionExporter::namespaceFor("{$root}/src/Reports", $psr4))->toBe('App\\Console\\Special\\Reports')
+        ->and(SessionExporter::namespaceFor("{$root}/app/my-scripts", $psr4))->toBeNull()
+        ->and(SessionExporter::namespaceFor("{$root}/application", $psr4))->toBeNull()
+        ->and(SessionExporter::namespaceFor(sys_get_temp_dir(), $psr4))->toBeNull();
+
+    (new \Illuminate\Filesystem\Filesystem())->deleteDirectory($root);
+});
+
+test('resolves relative folders from the working directory', function () {
+    $root = sys_get_temp_dir() . '/tailor-psr4-' . uniqid();
+    mkdir("{$root}/app", 0755, true);
+    $cwd = getcwd();
+    chdir($root);
+
+    try {
+        expect(SessionExporter::namespaceFor('app/Console/Commands', ['App\\' => ["{$root}/app"]]))->toBe('App\\Console\\Commands');
+    } finally {
+        chdir($cwd);
+        (new \Illuminate\Filesystem\Filesystem())->deleteDirectory($root);
+    }
 });

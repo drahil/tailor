@@ -34,15 +34,13 @@ return [
     | Export Configuration
     |--------------------------------------------------------------------------
     |
-    | Where session:export writes scripts and Artisan commands.
+    | Where session:export writes Artisan commands. The namespace follows the
+    | folder, using Composer's PSR-4 autoload map.
     |
     */
 
     'export' => [
-        'default_format' => 'script',
-        'script_path' => storage_path('tailor/exports'),
-        'command_path' => app_path('Console/Commands'),
-        'command_namespace' => 'App\\Console\\Commands',
+        'path' => app_path('Console/Commands'),
     ],
 
     /*

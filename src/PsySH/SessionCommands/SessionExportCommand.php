@@ -24,19 +24,15 @@ class SessionExportCommand extends SessionCommand
         $this
             ->setName('session:export')
             ->setAliases(['export'])
-            ->setDescription('Export a saved session as a PHP script or an Artisan command')
+            ->setDescription('Export a saved session as an Artisan command')
             ->setHelp(<<<HELP
-  Export a saved session to a file you can use outside Tailor.
-
-  Formats:
-    script     Plain PHP file, run it with: php artisan tailor <file>
-    command    Artisan command class, run it with: php artisan tailor:<session>
+  Turn a saved session into an Artisan command you can run without Tailor.
+  The namespace follows the folder, using Composer's PSR-4 autoload map.
 
   Usage:
-    session:export blog-stats                     Export as a script
-    session:export blog-stats --format=command    Export as an Artisan command
-    session:export blog-stats --path=app/Scripts  Write to another folder
-    session:export blog-stats --force             Overwrite an existing file
+    session:export blog-stats                                    Write app/Console/Commands/BlogStats.php
+    session:export blog-stats --path=app/Console/Commands/Tailor Write to another folder
+    session:export blog-stats --force                            Overwrite an existing file
   HELP
             )
             ->addArgument(
@@ -45,16 +41,10 @@ class SessionExportCommand extends SessionCommand
                 'Name of the session'
             )
             ->addOption(
-                'format',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Export format: ' . implode(', ', SessionExporter::FORMATS)
-            )
-            ->addOption(
                 'path',
                 'p',
                 InputOption::VALUE_REQUIRED,
-                'Folder to write the file to'
+                'Folder to write the command to'
             )
             ->addOption(
                 'force',
@@ -71,18 +61,13 @@ class SessionExportCommand extends SessionCommand
             return 1;
         }
 
-        $format = $input->getOption('format') ?? config('tailor.export.default_format');
-        if (! in_array($format, SessionExporter::FORMATS, true)) {
-            $output->writeln("<error>Unknown format '{$format}'. Use one of: " . implode(', ', SessionExporter::FORMATS) . '.</error>');
-            return 1;
-        }
-
         if (! $this->sessionExists($sessionName->toString())) {
             return $this->sessionNotFoundError($output, (string) $sessionName);
         }
 
-        $directory = rtrim($input->getOption('path') ?? config("tailor.export.{$format}_path"), '/');
-        $file = $directory . '/' . SessionExporter::fileName($sessionName->toString(), $format);
+        $directory = rtrim($input->getOption('path') ?? config('tailor.export.path'), '/');
+        $file = $directory . '/' . SessionExporter::fileName($sessionName->toString());
+        $namespace = SessionExporter::namespaceFor($directory, $this->psr4());
 
         if (file_exists($file) && ! $input->getOption('force')) {
             $output->writeln("<error>{$file} already exists. Use --force to overwrite it.</error>");
@@ -92,8 +77,7 @@ class SessionExportCommand extends SessionCommand
         try {
             $content = $this->exporter->export(
                 $this->getSessionManager()->load($sessionName),
-                $format,
-                config('tailor.export.command_namespace')
+                $namespace ?? 'App\\Console\\Commands'
             );
 
             if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
@@ -109,14 +93,25 @@ class SessionExportCommand extends SessionCommand
 
         $output->writeln("<info>✓ Exported '{$sessionName}' to {$file}</info>");
 
+
         foreach ($this->exporter->getUnresolved() as $class) {
             $output->writeln("<comment>Could not resolve class '{$class}'; the command will likely fail where it is used.</comment>");
         }
 
-        $output->writeln($format === SessionExporter::COMMAND
-            ? "<comment>Run it with: php artisan tailor:{$sessionName}</comment>"
-            : "<comment>Run it with: php artisan tailor {$file}</comment>");
+        $output->writeln($namespace === null
+            ? "<comment>{$directory} is not in a PSR-4 autoloaded folder, so Artisan will not find the command there.</comment>"
+            : "<comment>Run it with: php artisan tailor:{$sessionName}</comment>");
 
         return 0;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function psr4(): array
+    {
+        $file = base_path('vendor/composer/autoload_psr4.php');
+
+        return file_exists($file) ? require $file : [];
     }
 }

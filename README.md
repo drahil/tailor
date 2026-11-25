@@ -1,6 +1,6 @@
 # Tailor
 
-A Laravel REPL that remembers your work: save sessions, replay them, and export them as scripts or Artisan commands.
+A Laravel REPL that remembers your work: save sessions, replay them, run them as files, and export them as Artisan commands.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%5E8.2-blue.svg)](https://php.net)
@@ -15,7 +15,7 @@ Tailor is a standalone REPL for Laravel, built on PsySH. Your App classes are im
 
 - **Sessions** - Save what you typed, then view, replay, extend or delete it later
 - **Session Metadata** - Add descriptions and tags to organize your sessions
-- **Session Export** - Turn a session into a PHP script or an Artisan command
+- **Session Export** - Turn a session into an Artisan command
 - **Auto-imported Classes** - Use `Post` instead of `App\Models\Post`, no `use` statements needed
 - **Eloquent Autocomplete** - Attributes, accessors, scopes and query chains such as `Post::popular()->wh<Tab>`
 - **Isolated History** - Per-project command history that doesn't pollute your global PsySH history
@@ -85,14 +85,18 @@ session:execute my-work --force               # Run an untagged session in produ
 ```
 The tag can be changed with `tailor.production.safe_tag` in `config/tailor.php`.
 
-**Export a session:**
+**Run a session from the terminal:** sessions are PHP files, so Tailor can run one directly and leave you at the prompt with its variables.
 ```bash
-session:export my-work                        # PHP script in storage/tailor/exports/my-work.php
-session:export my-work --format=command       # Artisan command in app/Console/Commands/MyWork.php
-session:export my-work --path=app/Scripts     # Write to another folder
-session:export my-work --force                # Overwrite an existing file
+php artisan tailor storage/tailor/sessions/my-work.php
 ```
-Run a script with `php artisan tailor storage/tailor/exports/my-work.php` (it runs the file, then leaves you at the Tailor prompt). Run a command with `php artisan tailor:my-work`. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Auto-imported class names become `use` statements, and in commands facades such as `DB` and global classes such as `Exception` are imported too.
+
+**Export a session as an Artisan command:**
+```bash
+session:export my-work                                     # app/Console/Commands/MyWork.php
+session:export my-work --path=app/Console/Commands/Tailor  # Another folder, namespace App\Console\Commands\Tailor
+session:export my-work --force                             # Overwrite an existing file
+```
+Run it with `php artisan tailor:my-work`, no Tailor shell needed. The namespace follows the folder through Composer's PSR-4 map. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Class names become `use` statements, including facades such as `DB` and global classes such as `Exception`.
 
 **Rename a session:**
 ```bash

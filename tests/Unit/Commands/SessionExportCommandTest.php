@@ -36,52 +36,49 @@ afterEach(function () {
     Mockery::close();
 });
 
-test('exports a script to the configured folder by default', function () {
-    config(['tailor.export.script_path' => $this->directory]);
+test('exports a command to the configured folder by default, in the namespace of that folder', function () {
+    $this->directory = base_path('tests/ExportOutput' . uniqid());
+    config(['tailor.export.path' => $this->directory]);
 
     $this->tester->execute(['name' => 'blog-stats']);
-    config(['tailor.export.script_path' => null]);
-
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and(file_get_contents("{$this->directory}/blog-stats.php"))->toContain('NoSuchThing::count();')
-        ->and($this->tester->getDisplay())->toContain("php artisan tailor {$this->directory}/blog-stats.php");
-});
-
-test('exports a command to the given path and warns about unresolved classes', function () {
-    $this->tester->execute(['name' => 'blog-stats', '--format' => 'command', '--path' => $this->directory]);
+    config(['tailor.export.path' => null]);
 
     expect($this->tester->getStatusCode())->toBe(0)
         ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toContain('class BlogStats extends Command')
+        ->toContain('namespace drahil\\Tailor\\Tests\\' . basename($this->directory) . ';')
+        ->and($this->tester->getDisplay())->toContain('php artisan tailor:blog-stats')
+        ->not->toContain('PSR-4');
+});
+
+test('warns about unresolved classes and folders Composer does not autoload', function () {
+    $this->tester->execute(['name' => 'blog-stats', '--path' => $this->directory]);
+
+    expect($this->tester->getStatusCode())->toBe(0)
+        ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toContain('namespace App\\Console\\Commands;')
         ->and($this->tester->getDisplay())->toContain("Could not resolve class 'NoSuchThing'")
-        ->toContain('php artisan tailor:blog-stats');
+        ->toContain('is not in a PSR-4 autoloaded folder')
+        ->not->toContain('Run it with');
 });
 
 test('does not overwrite an existing file without --force', function () {
     mkdir($this->directory);
-    file_put_contents("{$this->directory}/blog-stats.php", 'original');
+    file_put_contents("{$this->directory}/BlogStats.php", 'original');
 
     $this->tester->execute(['name' => 'blog-stats', '--path' => $this->directory]);
 
     expect($this->tester->getStatusCode())->toBe(1)
         ->and($this->tester->getDisplay())->toContain('already exists. Use --force')
-        ->and(file_get_contents("{$this->directory}/blog-stats.php"))->toBe('original');
+        ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toBe('original');
 });
 
 test('overwrites an existing file with --force', function () {
     mkdir($this->directory);
-    file_put_contents("{$this->directory}/blog-stats.php", 'original');
+    file_put_contents("{$this->directory}/BlogStats.php", 'original');
 
     $this->tester->execute(['name' => 'blog-stats', '--path' => $this->directory, '--force' => true]);
 
     expect($this->tester->getStatusCode())->toBe(0)
-        ->and(file_get_contents("{$this->directory}/blog-stats.php"))->toContain('NoSuchThing::count();');
-});
-
-test('rejects an unknown format', function () {
-    $this->tester->execute(['name' => 'blog-stats', '--format' => 'seeder', '--path' => $this->directory]);
-
-    expect($this->tester->getStatusCode())->toBe(1)
-        ->and($this->tester->getDisplay())->toContain("Unknown format 'seeder'. Use one of: script, command.");
+        ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toContain('NoSuchThing::count();');
 });
 
 test('fails when the session does not exist', function () {
