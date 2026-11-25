@@ -80,42 +80,39 @@ test('executes session commands successfully', function () {
         ->and($this->tester->getDisplay())->toContain('Executed 2 command(s)');
 });
 
-test('handles command execution errors gracefully', function () {
+test('stops at the first failure and does not run the rest', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            'throw new Exception("test")',
-            'echo "ok"',
+            '$a = 1',
+            '$user->delete()',
+            '$b = 2',
+            '$c = 3',
+            '$d = 4',
         ],
     );
 
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->once()
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayExecutionHeader')
-        ->once();
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
 
     $this->app
         ->shouldReceive('execute')
         ->twice()
-        ->andReturnUsing(function ($code, $throwExceptions = false) {
-            if (str_contains($code, 'Exception') && $throwExceptions) {
-                throw new Exception('test');
+        ->andReturnUsing(function ($code) {
+            if ($code === '$user->delete()') {
+                throw new Error('Call to a member function delete() on null');
             }
             return null;
         });
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)')
-        ->and($this->tester->getDisplay())->toContain('(1 failed)')
-        ->and($this->tester->getDisplay())->toContain('Failed to execute');
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Failed to execute: Call to a member function delete() on null')
+        ->and($this->tester->getDisplay())->toContain('Stopped after 2 of 5 command(s); 3 not run.')
+        ->and($this->tester->getDisplay())->not->toContain('$b = 2');
 });
 
 test('counts PHP errors such as parse errors as failures', function () {
@@ -145,7 +142,8 @@ test('counts PHP errors such as parse errors as failures', function () {
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getDisplay())->toContain('Executed 0 command(s) (1 failed)')
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Stopped after 1 of 1 command(s); 0 not run.')
         ->and($this->tester->getDisplay())->toContain('syntax error');
 });
 
@@ -272,7 +270,7 @@ test('still activates the session after failed replays, with a warning', functio
     $this->tester->execute(['name' => 'test-session']);
 
     expect($this->sessionTracker->getActiveSession())->toBe('test-session')
-        ->and($this->tester->getDisplay())->toContain('1 command(s) failed during replay');
+        ->and($this->tester->getDisplay())->toContain('replay stopped at a failed command');
 });
 
 test('displays error when no session name is given', function () {

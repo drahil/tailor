@@ -77,10 +77,13 @@ class SessionExecuteCommand extends SessionCommand
 
             $this->formatter->displayExecutionHeader($output, $sessionData);
 
-            $executedCount = 0;
-            $failedCount = 0;
+            $total = count($sessionData->commands);
+            $attempted = 0;
+            $failed = false;
 
             foreach ($sessionData->commands as $code) {
+                $attempted++;
+
                 try {
                     $output->writeln("<comment>>>> {$code}</comment>");
 
@@ -89,27 +92,27 @@ class SessionExecuteCommand extends SessionCommand
                     if ($result !== null) {
                         $shell->writeReturnValue($result);
                     }
-
-                    $executedCount++;
                 } catch (Throwable $e) {
-                    $failedCount++;
+                    $failed = true;
                     $output->writeln("<error>Failed to execute: {$e->getMessage()}</error>");
+                    break;
                 }
             }
 
             $output->writeln('');
-            $output->writeln("<info>Executed {$executedCount} command(s)" .
-                ($failedCount > 0 ? " ({$failedCount} failed)" : "") . "</info>");
+            $output->writeln($failed
+                ? "<error>Stopped after {$attempted} of {$total} command(s); " . ($total - $attempted) . " not run.</error>"
+                : "<info>Executed {$total} command(s)</info>");
 
             $sessionTracker = $shell->getScopeVariable('__sessionTracker');
             $this->historyCaptureService->markAppendStart($sessionTracker, storage_path('tailor/tailor_history'));
             $sessionTracker->setActiveSession($sessionName->toString());
 
-            $output->writeln($failedCount > 0
-                ? "<comment>'{$sessionName}' is active, but {$failedCount} command(s) failed during replay. session:append will add new commands after them.</comment>"
+            $output->writeln($failed
+                ? "<comment>'{$sessionName}' is active, but replay stopped at a failed command. session:append will add new commands after the whole session.</comment>"
                 : "<comment>'{$sessionName}' is active. Use session:append to add new commands to it.</comment>");
 
-            return 0;
+            return $failed ? 1 : 0;
 
         } catch (Exception $e) {
             return $this->operationFailedError($output, 'load', $e->getMessage());
