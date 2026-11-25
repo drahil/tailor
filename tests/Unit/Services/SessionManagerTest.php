@@ -102,6 +102,28 @@ test('append fails for a session that does not exist', function () {
     $this->manager->append(SessionName::from('missing'), ['$a = 1']);
 })->throws(RuntimeException::class, "Session 'missing' does not exist.");
 
+test('rename moves the session and keeps its contents', function () {
+    $this->manager->rename('work', 'renamed');
+
+    expect($this->manager->exists('work'))->toBeFalse()
+        ->and($this->manager->load('renamed')->commands)->toBe(['$a = 1;', '$b = 2;'])
+        ->and($this->manager->load('renamed')->metadata->description?->toString())->toBe('Original work');
+});
+
+test('rename replaces a session that already has the new name', function () {
+    writeSessionFile($this->storagePath, 'Other.php', "<?php\n\n\$old = true;\n");
+
+    $this->manager->rename('work', 'other');
+
+    expect(glob($this->storagePath . '/*'))->toBe([$this->storagePath . '/other.php'])
+        ->and($this->manager->load('other')->commands)->toBe(['$a = 1;', '$b = 2;']);
+});
+
+test('rename fails for a session that does not exist', function () {
+    expect(fn () => $this->manager->rename('missing', 'other'))
+        ->toThrow(RuntimeException::class, "Session 'missing' does not exist.");
+});
+
 test('session names are case-insensitive', function () {
     expect($this->manager->exists('WORK'))->toBeTrue()
         ->and($this->manager->load('Work')->metadata->name->toString())->toBe('work');

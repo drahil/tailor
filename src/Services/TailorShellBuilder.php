@@ -12,6 +12,7 @@ use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExportCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionRenameCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionViewCommand;
 use drahil\Tailor\PsySH\TailorAutoCompleter;
@@ -143,6 +144,7 @@ class TailorShellBuilder
             new SessionDeleteCommand(),
             new SessionViewCommand($this->formatter),
             new SessionEditCommand(),
+            new SessionRenameCommand(),
             new SessionExportCommand(new SessionExporter($importResult->getAliases())),
         ]);
     }
@@ -183,6 +185,7 @@ Available commands:
   session:execute    Execute a saved session
   session:append     Append new commands to a saved session
   session:edit       Edit session metadata
+  session:rename     Rename a saved session
   session:delete     Delete a saved session
   session:export     Export a session as a script or Artisan command
 

@@ -176,6 +176,32 @@ class SessionManager
     }
 
     /**
+     * Rename a session, replacing any session that already has the new name.
+     *
+     * @throws RuntimeException
+     */
+    public function rename(SessionName|string $from, SessionName|string $to): void
+    {
+        $from = $this->toSessionName($from);
+        $to = $this->toSessionName($to);
+
+        if (! $this->exists($from)) {
+            throw new RuntimeException("Session '{$from}' does not exist.");
+        }
+
+        $target = $this->storagePath . '/' . $to->toString() . '.php';
+        $replaced = $this->exists($to) ? $this->getSessionPath($to) : null;
+
+        if (! File::move($this->getSessionPath($from), $target)) {
+            throw new RuntimeException("Could not rename session '{$from}' to '{$to}'.");
+        }
+
+        if ($replaced !== null && $replaced !== $target) {
+            File::delete($replaced);
+        }
+    }
+
+    /**
      * Get the session file path, also matching files saved under a different letter case.
      */
     protected function getSessionPath(SessionName $name): string

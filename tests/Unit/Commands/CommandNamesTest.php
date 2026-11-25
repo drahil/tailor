@@ -9,6 +9,7 @@ use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExportCommand;
 use drahil\Tailor\Services\SessionExporter;
 use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionRenameCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionViewCommand;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
@@ -25,6 +26,7 @@ test('bare command names are not buffered as incomplete PHP', function () {
         new SessionDeleteCommand(),
         new SessionViewCommand($formatter),
         new SessionEditCommand(),
+        new SessionRenameCommand(),
         new SessionExportCommand(new SessionExporter()),
     ];
     $policy = new StatementCompletenessPolicy(new BufferAnalyzer(), false);

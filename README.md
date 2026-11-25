@@ -94,6 +94,12 @@ session:export my-work --force                # Overwrite an existing file
 ```
 Run a script with `php artisan tailor storage/tailor/exports/my-work.php` (it runs the file, then leaves you at the Tailor prompt). Run a command with `php artisan tailor:my-work`. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Auto-imported class names become `use` statements, and in commands facades such as `DB` and global classes such as `Exception` are imported too.
 
+**Rename a session:**
+```bash
+session:rename session-2026-11-25-101500 blog-stats   # Give an auto-named session a real name
+session:rename old-work new-work --force              # Replace an existing session without asking
+```
+
 **Delete a session:**
 ```bash
 session:delete my-work                        # Delete a session (with confirmation)

@@ -129,3 +129,19 @@ test('session:execute stops at the first failing command', function () {
         ->toContain('Stopped after 2 of 3 command(s); 1 not run.')
         ->and($check)->toContain('not run');
 });
+
+test('session:append follows the active session after a rename', function () {
+    $shell = new TailorProcess($this->sessions);
+
+    $shell->run('$a = 2');
+    $shell->run('session:save work');
+    $shell->run('session:execute work');
+    $shell->run('session:rename work stats');
+    $shell->run('$b = $a * 3');
+    $output = $shell->run('session:append');
+    $shell->close();
+
+    expect($output)->toContain("Appended 1 command(s) to 'stats' (2 total)")
+        ->and(file_exists("{$this->sessions}/work.php"))->toBeFalse()
+        ->and(sessionCode($this->sessions, 'stats'))->toBe("\$a = 2;\n\$b = \$a * 3;");
+});
