@@ -29,12 +29,12 @@ class AutoSaveService
 
     public function shouldAutoSave(): bool
     {
-        if (! config('tailor.session.auto_save', false)) {
+        if (! config('tailor.session.auto_save')) {
             return false;
         }
 
-        $minCommands = config('tailor.session.auto_save_min_commands', 5);
-        $maxInterval = config('tailor.session.auto_save_interval', 300);
+        $minCommands = config('tailor.session.auto_save_min_commands');
+        $maxInterval = config('tailor.session.auto_save_interval');
 
         $historyFile = storage_path('tailor/tailor_history');
         $this->historyCaptureService->captureHistoryToTracker($this->sessionTracker, $historyFile);

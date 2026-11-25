@@ -58,6 +58,9 @@ if (! function_exists('config')) {
             return null;
         }
 
-        return $testConfig[$key] ?? $default;
+        static $defaults = null;
+        $defaults ??= ['tailor' => require __DIR__ . '/../config/tailor.php'];
+
+        return $testConfig[$key] ?? Illuminate\Support\Arr::get($defaults, $key, $default);
     }
 }

@@ -25,13 +25,17 @@ class TailorServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__ . '/../../config/tailor.php', 'tailor');
+
         $this->app->singleton(SessionManager::class);
         $this->app->singleton(SessionTracker::class);
         $this->app->singleton(HistoryCaptureService::class);
         $this->app->singleton(CommandFilterService::class);
 
-        $this->commands([
-            TailorCommand::class,
-        ]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TailorCommand::class,
+            ]);
+        }
     }
 }

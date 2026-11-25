@@ -7,13 +7,12 @@ return [
     | Storage Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure where Tailor stores sessions and exported code.
+    | Configure where Tailor stores sessions.
     |
     */
 
     'storage' => [
         'sessions' => storage_path('tailor/sessions'),
-        'exports' => storage_path('tailor/exports'),
     ],
 
     /*
@@ -50,14 +49,12 @@ return [
     | Autocomplete Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure autocomplete behavior.
+    | Turn Tab completion on or off.
     |
     */
 
     'autocomplete' => [
         'enabled' => true,
-        'cache_models' => true,
-        'cache_ttl' => 3600, // 1 hour
     ],
 
     /*

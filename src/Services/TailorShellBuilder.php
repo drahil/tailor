@@ -59,6 +59,7 @@ class TailorShellBuilder
         return new Configuration([
             'startupMessage' => $this->getStartupMessage(),
             'historyFile' => storage_path('tailor/tailor_history'),
+            'useTabCompletion' => (bool) config('tailor.autocomplete.enabled'),
         ]);
     }
 

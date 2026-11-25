@@ -118,7 +118,7 @@ readonly class ClassDiscoveryService
     private function shouldScanNamespace(string $namespace): bool
     {
         $namespaces = $this->scannableNamespaces
-            ?? config('tailor.discovery.scannable_namespaces', ['App\\']);
+            ?? config('tailor.discovery.scannable_namespaces');
 
         foreach ($namespaces as $scannableNamespace) {
             if (str_starts_with($namespace, $scannableNamespace)) {

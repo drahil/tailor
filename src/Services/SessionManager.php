@@ -22,7 +22,7 @@ class SessionManager
 
     public function __construct(?string $storagePath = null)
     {
-        $this->storagePath = $storagePath ?? config('tailor.storage.sessions', storage_path('tailor/sessions'));
+        $this->storagePath = $storagePath ?? config('tailor.storage.sessions');
         $this->ensureStorageDirectoryExists();
         $this->convertLegacySessions();
     }

@@ -124,7 +124,7 @@ class SessionExecuteCommand extends SessionCommand
      */
     private function confirmProductionRun(InputInterface $input, OutputInterface $output, SessionData $sessionData): bool
     {
-        $safeTag = strtolower(config('tailor.production.safe_tag', 'safe-for-prod'));
+        $safeTag = strtolower(config('tailor.production.safe_tag'));
         $isSafe = in_array($safeTag, array_map('strtolower', $sessionData->metadata->tags), true);
 
         if (config('app.env') !== 'production' || $isSafe || $input->getOption('force')) {
