@@ -29,7 +29,7 @@ class SessionExportCommand extends SessionCommand
   Export a saved session to a file you can use outside Tailor.
 
   Formats:
-    script     Plain PHP file, run it with: php artisan tinker <file>
+    script     Plain PHP file, run it with: php artisan tailor <file>
     command    Artisan command class, run it with: php artisan tailor:<session>
 
   Usage:
@@ -115,7 +115,7 @@ class SessionExportCommand extends SessionCommand
 
         $output->writeln($format === SessionExporter::COMMAND
             ? "<comment>Run it with: php artisan tailor:{$sessionName}</comment>"
-            : "<comment>Run it with: php artisan tinker {$file}</comment>");
+            : "<comment>Run it with: php artisan tailor {$file}</comment>");
 
         return 0;
     }

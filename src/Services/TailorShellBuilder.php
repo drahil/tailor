@@ -31,7 +31,10 @@ class TailorShellBuilder
         private readonly SessionOutputFormatter $formatter,
     ) {}
 
-    public function build(ImportResult $importResult): Shell
+    /**
+     * @param array<int, string> $includes Files to run after the auto-imports
+     */
+    public function build(ImportResult $importResult, array $includes = []): Shell
     {
         $config = $this->createConfiguration();
         $readline = $this->setupRecordingReadline($config);
@@ -47,9 +50,10 @@ class TailorShellBuilder
         $autoCompleter->setCommandNames($commandNames);
         $readline?->setCommandNames($commandNames);
 
-        if ($importResult->hasIncludeFile()) {
-            $shell->setIncludes([$importResult->getIncludeFile()]);
-        }
+        $shell->setIncludes(array_merge(
+            $importResult->hasIncludeFile() ? [$importResult->getIncludeFile()] : [],
+            $includes,
+        ));
 
         $this->hookSessionTracker($shell);
         $this->setupAutoSave($shell);
@@ -167,7 +171,7 @@ class TailorShellBuilder
     private function getStartupMessage(): string
     {
         return <<<MESSAGE
-<fg=cyan>Tailor - Enhanced Laravel Tinker</>
+<fg=cyan>Tailor - a Laravel REPL with saved sessions</>
 
 Classes from your App namespace are auto-imported.
 Type 'User::' and press Tab for autocomplete.

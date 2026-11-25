@@ -44,7 +44,7 @@ test('exports a script to the configured folder by default', function () {
 
     expect($this->tester->getStatusCode())->toBe(0)
         ->and(file_get_contents("{$this->directory}/blog-stats.php"))->toContain('NoSuchThing::count();')
-        ->and($this->tester->getDisplay())->toContain("php artisan tinker {$this->directory}/blog-stats.php");
+        ->and($this->tester->getDisplay())->toContain("php artisan tailor {$this->directory}/blog-stats.php");
 });
 
 test('exports a command to the given path and warns about unresolved classes', function () {

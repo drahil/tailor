@@ -1,6 +1,6 @@
 {
     "name": "drahil/tailor",
-    "description": "Enhanced Laravel Tinker with session management, code export, and smart autocomplete",
+    "description": "A Laravel REPL with saved sessions, code export and Eloquent-aware autocomplete",
     "keywords": ["laravel", "tinker", "repl", "psysh", "session", "development"],
     "type": "library",
     "license": "MIT",
