@@ -84,9 +84,7 @@ readonly class ClassDiscoveryService
             ->files()
             ->in($directory)
             ->name('*.php')
-            ->notPath('database/migrations')
-            ->notPath('database/seeders')
-            ->notPath('tests')
+            ->notPath('#(^|/)tests/#')
             ->ignoreDotFiles(true);
     }
 

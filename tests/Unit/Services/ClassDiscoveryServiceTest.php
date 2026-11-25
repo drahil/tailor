@@ -76,3 +76,24 @@ test('fingerprint is stable and depends on the scanned namespaces', function () 
     expect($tailor->fingerprint())->toBe($tailor->fingerprint())
         ->and($tailor->fingerprint())->not->toBe((new ClassDiscoveryService(['App\\']))->fingerprint());
 });
+
+test('skips only folders named tests', function () {
+    $directory = sys_get_temp_dir() . '/tailor-discovery-' . uniqid();
+    $files = [
+        'Http/Controllers/ContestsController.php' => '<?php namespace App\Http\Controllers; class ContestsController {}',
+        'tests/FooTest.php' => '<?php namespace App\tests; class FooTest {}',
+        'Feature/tests/BarTest.php' => '<?php namespace App\Feature\tests; class BarTest {}',
+    ];
+
+    foreach ($files as $path => $contents) {
+        @mkdir(dirname("{$directory}/{$path}"), 0777, true);
+        file_put_contents("{$directory}/{$path}", $contents);
+    }
+
+    $method = new ReflectionMethod(ClassDiscoveryService::class, 'scanDirectory');
+    $classes = $method->invoke(new ClassDiscoveryService(['App\\']), 'App\\', $directory);
+
+    expect(array_keys($classes))->toBe(['App\\Http\\Controllers\\ContestsController']);
+
+    (new Illuminate\Filesystem\Filesystem())->deleteDirectory($directory);
+});
