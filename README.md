@@ -1,24 +1,25 @@
 # Tailor
 
-Enhanced Laravel Tinker with session management and isolated history.
+A Laravel REPL that remembers your work: save sessions, replay them, and export them as scripts or Artisan commands.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%5E8.2-blue.svg)](https://php.net)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
+[![CI](https://github.com/drahil/tailor/actions/workflows/ci.yml/badge.svg)](https://github.com/drahil/tailor/actions/workflows/ci.yml)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%206-brightgreen.svg)](phpstan.neon)
 
 ## What is Tailor?
 
-Tailor extends Laravel Tinker with powerful session management, allowing you to save your REPL sessions, execute them later, and maintain isolated command history per project.
+Tailor is a standalone REPL for Laravel, built on PsySH. Your App classes are imported automatically, autocomplete understands Eloquent models and query chains, and every session can be saved, replayed, extended and exported.
 
 ## Features
 
-- **Session Management** - Save, load, view, and execute your Tinker sessions
+- **Sessions** - Save what you typed, then view, replay, extend or delete it later
 - **Session Metadata** - Add descriptions and tags to organize your sessions
-- **Isolated History** - Per-project command history that doesn't pollute your global PsySH history
-- **Session Tracking** - Track commands and variables during your REPL session
-- **Session Execution** - Replay saved sessions to reproduce your work
 - **Session Export** - Turn a session into a PHP script or an Artisan command
+- **Auto-imported Classes** - Use `Post` instead of `App\Models\Post`, no `use` statements needed
+- **Eloquent Autocomplete** - Attributes, accessors, scopes and query chains such as `Post::popular()->wh<Tab>`
+- **Isolated History** - Per-project command history that doesn't pollute your global PsySH history
+- **Safe in Production** - Sessions ask for confirmation in production unless tagged `safe-for-prod`
 
 ## Installation
 
@@ -31,6 +32,11 @@ composer require --dev drahil/tailor
 Start Tailor:
 ```bash
 php artisan tailor
+```
+
+Run PHP files first, then keep working in the shell:
+```bash
+php artisan tailor scripts/setup.php
 ```
 
 ### Session Commands
@@ -86,7 +92,7 @@ session:export my-work --format=command       # Artisan command in app/Console/C
 session:export my-work --path=app/Scripts     # Write to another folder
 session:export my-work --force                # Overwrite an existing file
 ```
-Run a script with `php artisan tinker storage/tailor/exports/my-work.php` (it runs the file, then leaves you at the Tinker prompt). Run a command with `php artisan tailor:my-work`. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Auto-imported class names become `use` statements, and in commands facades such as `DB` and global classes such as `Exception` are imported too.
+Run a script with `php artisan tailor storage/tailor/exports/my-work.php` (it runs the file, then leaves you at the Tailor prompt). Run a command with `php artisan tailor:my-work`. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Auto-imported class names become `use` statements, and in commands facades such as `DB` and global classes such as `Exception` are imported too.
 
 **Delete a session:**
 ```bash
@@ -126,8 +132,8 @@ Each Tailor window records only the commands typed in it, so two windows open at
 ## Requirements
 
 - PHP 8.2 or higher
-- Symfony Console ^7.3
-- PsySH ^0.12.12
+- Laravel 11, 12 or 13 (Laravel 13 needs PHP 8.3)
+- PsySH 0.12.22 or higher, installed with Tailor
 
 ## Development
 
