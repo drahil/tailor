@@ -81,7 +81,7 @@ final class SessionFile
      * Ensure a command is a complete statement, adding the semicolon PsySH lets you leave out.
      * Code that is not valid PHP is kept as a comment so the file stays parseable.
      */
-    private static function renderCommand(string $code): string
+    public static function renderCommand(string $code): string
     {
         $code = trim($code);
 

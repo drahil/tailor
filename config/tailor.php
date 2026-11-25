@@ -34,14 +34,15 @@ return [
     | Export Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure default export behavior.
+    | Where session:export writes scripts and Artisan commands.
     |
     */
 
     'export' => [
-        'default_format' => 'php',
-        'namespace' => 'App\\Scripts',
-        'open_after_export' => false,
+        'default_format' => 'script',
+        'script_path' => storage_path('tailor/exports'),
+        'command_path' => app_path('Console/Commands'),
+        'command_namespace' => 'App\\Console\\Commands',
     ],
 
     /*

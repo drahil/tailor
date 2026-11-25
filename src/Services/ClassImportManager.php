@@ -18,7 +18,7 @@ class ClassImportManager
      *
      * @param array<string, string> $classes Map of FQN => file path
      * @param array<int, string> $reservedNames Names that are already taken
-     * @return array{statements: array<int, string>, skipped: array<string, string>} Skipped is FQN => alias
+     * @return array{statements: array<int, string>, aliases: array<string, string>, skipped: array<string, string>} Aliases is alias => FQN, skipped is FQN => alias
      */
     public function generateAliases(array $classes, array $reservedNames = []): array
     {
@@ -27,6 +27,7 @@ class ClassImportManager
         $aliasCounts = array_count_values(array_map('strtolower', $aliases));
 
         $statements = [];
+        $imported = [];
         $skipped = [];
 
         foreach ($aliases as $fqn => $alias) {
@@ -38,9 +39,10 @@ class ClassImportManager
             }
 
             $statements[] = "try { class_alias('{$fqn}', '{$alias}'); } catch (\\Throwable) {}";
+            $imported[$alias] = $fqn;
         }
 
-        return ['statements' => $statements, 'skipped' => $skipped];
+        return ['statements' => $statements, 'aliases' => $imported, 'skipped' => $skipped];
     }
 
     /**

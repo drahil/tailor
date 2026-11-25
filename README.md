@@ -18,6 +18,7 @@ Tailor extends Laravel Tinker with powerful session management, allowing you to 
 - **Isolated History** - Per-project command history that doesn't pollute your global PsySH history
 - **Session Tracking** - Track commands and variables during your REPL session
 - **Session Execution** - Replay saved sessions to reproduce your work
+- **Session Export** - Turn a session into a PHP script or an Artisan command
 
 ## Installation
 
@@ -77,6 +78,15 @@ session:edit my-work --add-tag safe-for-prod  # Mark a reviewed session as safe 
 session:execute my-work --force               # Run an untagged session in production without asking
 ```
 The tag can be changed with `tailor.production.safe_tag` in `config/tailor.php`.
+
+**Export a session:**
+```bash
+session:export my-work                        # PHP script in storage/tailor/exports/my-work.php
+session:export my-work --format=command       # Artisan command in app/Console/Commands/MyWork.php
+session:export my-work --path=app/Scripts     # Write to another folder
+session:export my-work --force                # Overwrite an existing file
+```
+Run a script with `php artisan tinker storage/tailor/exports/my-work.php` (it runs the file, then leaves you at the Tinker prompt). Run a command with `php artisan tailor:my-work`. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Auto-imported class names become `use` statements, and in commands facades such as `DB` and global classes such as `Exception` are imported too.
 
 **Delete a session:**
 ```bash

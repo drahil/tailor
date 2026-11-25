@@ -36,7 +36,7 @@ readonly class ClassAutoImporter
 
             $includeFile = $this->fileManager->createIncludeFile($aliases['statements']);
 
-            return ImportResult::success($includeFile);
+            return ImportResult::success($includeFile, $aliases['aliases']);
         } catch (Throwable $e) {
             $output->writeln("<error>Auto-import failed: {$e->getMessage()} at {$e->getFile()}:{$e->getLine()}</error>");
             $output->writeln('<comment>Starting without auto-imported classes.</comment>');

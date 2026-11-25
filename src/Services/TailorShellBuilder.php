@@ -10,6 +10,7 @@ use drahil\Tailor\PsySH\SessionCommands\SessionAppendCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
+use drahil\Tailor\PsySH\SessionCommands\SessionExportCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionListCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionViewCommand;
@@ -37,7 +38,7 @@ class TailorShellBuilder
         $autoCompleter = $this->setupAutoCompleter($config);
 
         $this->addLaravelCasters($config);
-        $this->registerCommands($config);
+        $this->registerCommands($config, $importResult);
 
         $shell = new Shell($config);
 
@@ -128,7 +129,7 @@ class TailorShellBuilder
         $config->getPresenter()->addCasters($casters);
     }
 
-    private function registerCommands(Configuration $config): void
+    private function registerCommands(Configuration $config, ImportResult $importResult): void
     {
         $config->addCommands([
             new SessionListCommand(),
@@ -138,6 +139,7 @@ class TailorShellBuilder
             new SessionDeleteCommand(),
             new SessionViewCommand($this->formatter),
             new SessionEditCommand(),
+            new SessionExportCommand(new SessionExporter($importResult->getAliases())),
         ]);
     }
 
@@ -178,6 +180,7 @@ Available commands:
   session:append     Append new commands to a saved session
   session:edit       Edit session metadata
   session:delete     Delete a saved session
+  session:export     Export a session as a script or Artisan command
 
 Type 'help' for more commands
 MESSAGE;

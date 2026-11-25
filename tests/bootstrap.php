@@ -30,6 +30,13 @@ if (! function_exists('storage_path')) {
     }
 }
 
+if (! function_exists('app_path')) {
+    function app_path(string $path = ''): string
+    {
+        return sys_get_temp_dir() . '/tailor-test-app/' . ltrim($path, '/');
+    }
+}
+
 if (! function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
