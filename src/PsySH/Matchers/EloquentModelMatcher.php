@@ -6,8 +6,11 @@ namespace drahil\Tailor\PsySH\Matchers;
 
 use Exception;
 use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use InvalidArgumentException;
 use Psy\TabCompletion\Matcher\AbstractContextAwareMatcher;
 use ReflectionClass;
@@ -68,7 +71,7 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
     }
 
     /**
-     * Get matches for instance method/property access.
+     * Get matches after `->`, for model variables, query builder variables and query chains.
      *
      * @param array<mixed> $tokens
      * @param string $input
@@ -76,39 +79,83 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
      */
     private function getInstanceMatches(array $tokens, string $input): array
     {
-        $objectToken = array_pop($tokens);
+        $expression = $this->trailingExpression($tokens);
 
-        if (! is_array($objectToken)) {
+        if ($expression === null) {
             return [];
         }
 
-        if (! isset($objectToken[1])) {
-            return [];
-        }
-
-        $objectName = str_replace('$', '', $objectToken[1]);
+        $isVariable = count($expression) === 1;
+        $resolver = new QueryChainResolver(function (string $name) {
+            try {
+                return $this->getVariable($name);
+            } catch (Throwable) {
+                return null;
+            }
+        });
 
         try {
-            $allVars = $this->getVariables();
-
-            if (! array_key_exists($objectName, $allVars)) {
-                return [];
-            }
-
-            $object = $allVars[$objectName];
-
-            if (! is_object($object)) {
-                return [];
-            }
-        } catch (Throwable $e) {
+            $type = $resolver->resolve(implode(' ', array_map(
+                fn ($token) => is_array($token) ? $token[1] : $token,
+                $expression
+            )));
+        } catch (Throwable) {
             return [];
         }
 
-        if (! $object instanceof Model) {
+        if ($type === null) {
             return [];
         }
 
-        return $this->getModelCompletions($object, $input);
+        [$kind, $class] = $type;
+
+        if ($isVariable) {
+            return match ($kind) {
+                QueryChainResolver::MODEL => $this->getModelCompletions($this->getVariable(ltrim($expression[0][1], '$')), $input),
+                QueryChainResolver::BUILDER => $this->getBuilderCompletions($class, $input),
+                default => [],
+            };
+        }
+
+        return match ($kind) {
+            QueryChainResolver::MODEL => $this->getModelCompletions(new $class(), $input),
+            QueryChainResolver::BUILDER => $this->getBuilderCompletions($class, $input),
+            QueryChainResolver::COLLECTION => $this->filterByPrefix($this->publicMethods($class), $input),
+            default => [],
+        };
+    }
+
+    /**
+     * The tokens of the expression right before `->`, e.g. `Post::where(...)` in `dd(Post::where(...)->`.
+     *
+     * @param array<mixed> $tokens
+     * @return array<mixed>|null
+     */
+    private function trailingExpression(array $tokens): ?array
+    {
+        $chainTokens = [T_STRING, T_VARIABLE, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE, T_DOUBLE_COLON, T_OBJECT_OPERATOR];
+        $depth = 0;
+        $expression = [];
+
+        for ($i = count($tokens) - 1; $i >= 0; $i--) {
+            $token = $tokens[$i];
+            $text = is_array($token) ? $token[1] : $token;
+
+            if (in_array($text, [')', ']'], true)) {
+                $depth++;
+            } elseif (in_array($text, ['(', '['], true)) {
+                if ($depth === 0) {
+                    break;
+                }
+                $depth--;
+            } elseif ($depth === 0 && ! (is_array($token) && in_array($token[0], $chainTokens, true))) {
+                break;
+            }
+
+            array_unshift($expression, $token);
+        }
+
+        return $expression === [] || $depth !== 0 ? null : $expression;
     }
 
     /**
@@ -160,6 +207,46 @@ class EloquentModelMatcher extends AbstractContextAwareMatcher
         $completions = array_merge($completions, $this->getQueryBuilderCompletions($input));
 
         return array_values(array_unique($completions));
+    }
+
+    /**
+     * Get completions for a query builder of the given model.
+     *
+     * @param class-string<Model> $model
+     * @return array<string>
+     */
+    private function getBuilderCompletions(string $model, string $input): array
+    {
+        $methods = array_merge(
+            $this->publicMethods(EloquentBuilder::class),
+            $this->publicMethods(QueryBuilder::class),
+        );
+
+        if (in_array(SoftDeletes::class, class_uses_recursive($model), true)) {
+            $methods = array_merge($methods, ['withTrashed', 'onlyTrashed', 'withoutTrashed']);
+        }
+
+        return array_values(array_unique(array_merge(
+            $this->getScopeCompletions(new ReflectionClass($model), $input),
+            $this->filterByPrefix($methods, $input),
+        )));
+    }
+
+    /**
+     * @param class-string $class
+     * @return array<string>
+     */
+    private function publicMethods(string $class): array
+    {
+        $methods = [];
+
+        foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if (! $method->isStatic() && ! str_starts_with($method->getName(), '__')) {
+                $methods[] = $method->getName();
+            }
+        }
+
+        return $methods;
     }
 
     /**
