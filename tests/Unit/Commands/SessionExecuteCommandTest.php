@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
@@ -17,10 +16,8 @@ beforeEach(function () {
     $this->formatter = Mockery::mock(SessionOutputFormatter::class);
 
     $this->sessionTracker = new SessionTracker();
-    $this->historyCaptureService = Mockery::mock(HistoryCaptureService::class);
-    $this->historyCaptureService->shouldReceive('markAppendStart')->byDefault();
 
-    $this->command = new SessionExecuteCommand($this->historyCaptureService, $this->formatter);
+    $this->command = new SessionExecuteCommand($this->formatter);
 
     /* Mock the PsySH application */
     $definition = Mockery::mock(InputDefinition::class)->shouldIgnoreMissing();
@@ -242,14 +239,12 @@ test('makes the executed session active for session:append', function () {
     $this->formatter->shouldReceive('displayExecutionHeader')->once();
     $this->app->shouldReceive('execute')->once()->andReturn(null);
 
-    $this->historyCaptureService
-        ->shouldReceive('markAppendStart')
-        ->once()
-        ->with($this->sessionTracker, Mockery::type('string'));
+    $this->sessionTracker->addCommand('$earlier = 1');
 
     $this->tester->execute(['name' => 'test-session']);
 
     expect($this->sessionTracker->getActiveSession())->toBe('test-session')
+        ->and($this->sessionTracker->getCommandsSinceAppendStart())->toBe([])
         ->and($this->tester->getDisplay())->toContain("'test-session' is active. Use session:append");
 });
 

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use drahil\Tailor\PsySH\SessionCommands\SessionSaveCommand;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
@@ -13,13 +12,9 @@ use Symfony\Component\Console\Input\InputDefinition;
 beforeEach(function () {
     $this->sessionManager = mockSessionManager();
     $this->sessionTracker = mockSessionTracker();
-    $this->historyCaptureService = Mockery::mock(HistoryCaptureService::class);
     $this->formatter = Mockery::mock(SessionOutputFormatter::class);
 
-    $this->command = new SessionSaveCommand(
-        $this->historyCaptureService,
-        $this->formatter
-    );
+    $this->command = new SessionSaveCommand($this->formatter);
 
     /* Mock the PsySH application */
     $definition = Mockery::mock(InputDefinition::class)->shouldIgnoreMissing();
@@ -41,9 +36,6 @@ afterEach(function () {
 });
 
 test('saves session with provided name', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -71,9 +63,6 @@ test('saves session with provided name', function () {
 });
 
 test('auto-generates session name when not provided', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -98,9 +87,6 @@ test('auto-generates session name when not provided', function () {
 });
 
 test('displays error when no commands to save', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -113,9 +99,6 @@ test('displays error when no commands to save', function () {
 });
 
 test('saves session with description and tags', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -153,9 +136,6 @@ test('saves session with description and tags', function () {
 });
 
 test('overwrites existing session with force flag', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -183,9 +163,6 @@ test('overwrites existing session with force flag', function () {
 });
 
 test('auto-generates name for empty string', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -210,9 +187,6 @@ test('auto-generates name for empty string', function () {
 });
 
 test('handles save operation errors gracefully', function () {
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once();
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Exception;
@@ -17,7 +16,6 @@ use Throwable;
 class SessionExecuteCommand extends SessionCommand
 {
     public function __construct(
-        private readonly HistoryCaptureService $historyCaptureService,
         private readonly SessionOutputFormatter $formatter
     ) {
         parent::__construct();
@@ -105,7 +103,7 @@ class SessionExecuteCommand extends SessionCommand
                 : "<info>Executed {$total} command(s)</info>");
 
             $sessionTracker = $shell->getScopeVariable('__sessionTracker');
-            $this->historyCaptureService->markAppendStart($sessionTracker, storage_path('tailor/tailor_history'));
+            $sessionTracker->markAppendStart();
             $sessionTracker->setActiveSession($sessionName->toString());
 
             $output->writeln($failed

@@ -7,16 +7,11 @@ namespace drahil\Tailor\Services;
 class SessionTracker
 {
     /**
-     * Commands executed in the current session.
+     * Commands entered in this process.
      *
      * @var array<int, string>
      */
     protected array $commands = [];
-
-    /**
-     * Line number in history file where this session started.
-     */
-    protected int $sessionStartLine = 0;
 
     /**
      * Saved session that new commands are appended to.
@@ -24,19 +19,9 @@ class SessionTracker
     protected ?string $activeSession = null;
 
     /**
-     * History line from which session:append collects commands.
+     * Index in $commands from which session:append collects commands.
      */
-    protected int $appendStartLine = 0;
-
-    public function setSessionStartLine(int $line): void
-    {
-        $this->sessionStartLine = $line;
-    }
-
-    public function getSessionStartLine(): int
-    {
-        return $this->sessionStartLine;
-    }
+    protected int $appendStart = 0;
 
     public function setActiveSession(?string $name): void
     {
@@ -48,14 +33,17 @@ class SessionTracker
         return $this->activeSession;
     }
 
-    public function setAppendStartLine(int $line): void
+    public function markAppendStart(): void
     {
-        $this->appendStartLine = $line;
+        $this->appendStart = count($this->commands);
     }
 
-    public function getAppendStartLine(): int
+    /**
+     * @return array<int, string>
+     */
+    public function getCommandsSinceAppendStart(): array
     {
-        return $this->appendStartLine;
+        return array_slice($this->commands, $this->appendStart);
     }
 
     public function addCommand(string $code): void
@@ -79,10 +67,5 @@ class SessionTracker
     public function hasCommands(): bool
     {
         return $this->commands !== [];
-    }
-
-    public function clear(): void
-    {
-        $this->commands = [];
     }
 }

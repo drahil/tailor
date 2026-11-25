@@ -22,7 +22,6 @@ class AutoSaveService
     public function __construct(
         protected SessionManager $sessionManager,
         protected SessionTracker $sessionTracker,
-        protected HistoryCaptureService $historyCaptureService,
     ) {
         $this->lastSavedAt = time();
     }
@@ -35,9 +34,6 @@ class AutoSaveService
 
         $minCommands = config('tailor.session.auto_save_min_commands');
         $maxInterval = config('tailor.session.auto_save_interval');
-
-        $historyFile = storage_path('tailor/tailor_history');
-        $this->historyCaptureService->captureHistoryToTracker($this->sessionTracker, $historyFile);
 
         $unsavedCommands = $this->sessionTracker->getCommandCount() - $this->lastSavedCommandCount;
 

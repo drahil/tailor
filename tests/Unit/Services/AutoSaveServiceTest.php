@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use drahil\Tailor\Services\AutoSaveService;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
@@ -11,12 +10,10 @@ use drahil\Tailor\Support\DTOs\SessionMetadata;
 beforeEach(function () {
     $this->sessionManager = mockSessionManager();
     $this->sessionTracker = mockSessionTracker();
-    $this->historyCaptureService = Mockery::mock(HistoryCaptureService::class);
 
     $this->autoSaveService = new AutoSaveService(
         $this->sessionManager,
-        $this->sessionTracker,
-        $this->historyCaptureService
+        $this->sessionTracker
     );
 });
 
@@ -37,10 +34,6 @@ test('shouldAutoSave returns true when command count exceeds threshold', functio
         'tailor.session.auto_save_interval' => 300,
     ]);
 
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once()
-        ->with($this->sessionTracker, Mockery::type('string'));
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -56,10 +49,6 @@ test('shouldAutoSave returns true when interval has passed since last save', fun
         'tailor.session.auto_save_interval' => 0,
     ]);
 
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once()
-        ->with($this->sessionTracker, Mockery::type('string'));
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -75,10 +64,6 @@ test('shouldAutoSave returns false when neither threshold is met', function () {
         'tailor.session.auto_save_interval' => 300,
     ]);
 
-    $this->historyCaptureService
-        ->shouldReceive('captureHistoryToTracker')
-        ->once()
-        ->with($this->sessionTracker, Mockery::type('string'));
 
     $this->sessionTracker
         ->shouldReceive('getCommandCount')
@@ -87,7 +72,7 @@ test('shouldAutoSave returns false when neither threshold is met', function () {
     expect($this->autoSaveService->shouldAutoSave())->toBeFalse();
 });
 
-test('performAutoSave captures history and saves session', function () {
+test('performAutoSave saves the tracked commands', function () {
     $this->sessionTracker
         ->shouldReceive('hasCommands')
         ->andReturn(true);
@@ -162,7 +147,6 @@ test('shouldAutoSave returns false when nothing changed since last save', functi
         'tailor.session.auto_save_interval' => 0,
     ]);
 
-    $this->historyCaptureService->shouldReceive('captureHistoryToTracker');
     $this->sessionTracker->shouldReceive('hasCommands')->andReturn(true);
     $this->sessionTracker->shouldReceive('getCommandCount')->andReturn(6);
     $this->sessionManager->shouldReceive('save')->once();
@@ -179,7 +163,6 @@ test('shouldAutoSave counts only commands added since last save', function () {
         'tailor.session.auto_save_interval' => 300,
     ]);
 
-    $this->historyCaptureService->shouldReceive('captureHistoryToTracker');
     $this->sessionTracker->shouldReceive('hasCommands')->andReturn(true);
     $this->sessionTracker->shouldReceive('getCommandCount')->andReturn(6, 9, 11);
     $this->sessionManager->shouldReceive('save')->once();

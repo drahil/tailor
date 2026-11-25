@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use drahil\Tailor\Providers\TailorServiceProvider;
-use drahil\Tailor\Services\CommandFilterService;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Services\SessionTracker;
 use Illuminate\Container\Container;
@@ -59,7 +57,7 @@ test('registers the services as singletons', function () {
 
     (new TailorServiceProvider($app))->register();
 
-    foreach ([SessionManager::class, SessionTracker::class, HistoryCaptureService::class, CommandFilterService::class] as $service) {
+    foreach ([SessionManager::class, SessionTracker::class] as $service) {
         expect($app->isShared($service))->toBeTrue();
     }
 });

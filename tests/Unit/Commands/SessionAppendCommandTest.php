@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use drahil\Tailor\PsySH\SessionCommands\SessionAppendCommand;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
@@ -14,10 +13,11 @@ use Symfony\Component\Console\Input\InputDefinition;
 beforeEach(function () {
     $this->sessionManager = mockSessionManager();
     $this->sessionTracker = new SessionTracker();
-    $this->sessionTracker->setAppendStartLine(7);
-    $this->historyCaptureService = Mockery::mock(HistoryCaptureService::class);
+    $this->sessionTracker->addCommand('$a = 1');
+    $this->sessionTracker->addCommand('$b = 2');
+    $this->sessionTracker->markAppendStart();
 
-    $this->command = new SessionAppendCommand($this->historyCaptureService);
+    $this->command = new SessionAppendCommand();
 
     $definition = Mockery::mock(InputDefinition::class)->shouldIgnoreMissing();
     $app = Mockery::mock(Shell::class)->shouldIgnoreMissing();
@@ -50,11 +50,8 @@ test('appends new commands to the active session and moves the marker', function
     $this->sessionTracker->setActiveSession('work');
     $this->sessionManager->shouldReceive('exists')->with('work')->andReturn(true);
 
-    $this->historyCaptureService
-        ->shouldReceive('captureCommandsSince')
-        ->once()
-        ->with(Mockery::type('string'), 7)
-        ->andReturn(['$c = 3', '$d = 4']);
+    $this->sessionTracker->addCommand('$c = 3');
+    $this->sessionTracker->addCommand('$d = 4');
 
     $this->sessionManager
         ->shouldReceive('append')
@@ -62,22 +59,17 @@ test('appends new commands to the active session and moves the marker', function
         ->with(Mockery::on(fn ($name) => $name->toString() === 'work'), ['$c = 3', '$d = 4'])
         ->andReturn(sessionWithCommands('work', 6));
 
-    $this->historyCaptureService
-        ->shouldReceive('markAppendStart')
-        ->once()
-        ->with($this->sessionTracker, Mockery::type('string'));
-
     $this->tester->execute([]);
 
     expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain("Appended 2 command(s) to 'work' (6 total)");
+        ->and($this->tester->getDisplay())->toContain("Appended 2 command(s) to 'work' (6 total)")
+        ->and($this->sessionTracker->getCommandsSinceAppendStart())->toBe([]);
 });
 
 test('appends to a named session when one is given', function () {
     $this->sessionTracker->setActiveSession('work');
     $this->sessionManager->shouldReceive('exists')->with('other')->andReturn(true);
-    $this->historyCaptureService->shouldReceive('captureCommandsSince')->andReturn(['$c = 3']);
-    $this->historyCaptureService->shouldReceive('markAppendStart')->once();
+    $this->sessionTracker->addCommand('$c = 3');
 
     $this->sessionManager
         ->shouldReceive('append')
@@ -112,8 +104,6 @@ test('fails when the session does not exist', function () {
 test('does nothing when there are no new commands', function () {
     $this->sessionTracker->setActiveSession('work');
     $this->sessionManager->shouldReceive('exists')->with('work')->andReturn(true);
-    $this->historyCaptureService->shouldReceive('captureCommandsSince')->andReturn([]);
-    $this->historyCaptureService->shouldNotReceive('markAppendStart');
     $this->sessionManager->shouldNotReceive('append');
 
     $this->tester->execute([]);

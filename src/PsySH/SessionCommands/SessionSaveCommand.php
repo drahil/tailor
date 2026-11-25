@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use drahil\Tailor\Support\Validation\ValidationException;
@@ -20,7 +19,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 class SessionSaveCommand extends SessionCommand
 {
     public function __construct(
-        private readonly HistoryCaptureService $historyCaptureService,
         private readonly SessionOutputFormatter $formatter
     ) {
         parent::__construct();
@@ -78,9 +76,6 @@ class SessionSaveCommand extends SessionCommand
     {
         $sessionManager = $this->getSessionManager();
         $sessionTracker = $this->getApplication()->getScopeVariable('__sessionTracker');
-
-        $historyFile = storage_path('tailor/tailor_history');
-        $this->historyCaptureService->captureHistoryToTracker($sessionTracker, $historyFile);
 
         if ($sessionTracker->getCommandCount() === 0) {
             $output->writeln('<comment>No commands to save. Execute some commands first.</comment>');

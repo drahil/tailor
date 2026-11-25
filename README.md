@@ -59,6 +59,7 @@ view my-work                                  # Alias for session:view
 session:execute my-work                       # Run all commands from a session
 exec my-work                                  # Alias for session:execute
 ```
+Execution stops at the first command that fails and reports how many commands were not run.
 
 **Add more commands to a session:**
 ```bash
@@ -109,6 +110,8 @@ php artisan vendor:publish --tag=tailor-config
 ```
 
 Then edit `config/tailor.php` to customize storage paths and other settings.
+
+Each Tailor window records only the commands typed in it, so two windows open at once never mix their sessions. Shell commands such as `ls` or `doc` are not recorded. PsySH's experimental interactive readline (`useExperimentalReadline`) is not supported: with it enabled, commands are not recorded and `session:save` has nothing to save.
 
 ## Requirements
 

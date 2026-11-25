@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace drahil\Tailor\Services;
 
 use drahil\Tailor\PsySH\AutoSaveLoopListener;
+use drahil\Tailor\PsySH\RecordingReadline;
 use drahil\Tailor\PsySH\SessionCommands\SessionAppendCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionDeleteCommand;
 use drahil\Tailor\PsySH\SessionCommands\SessionEditCommand;
@@ -16,6 +17,7 @@ use drahil\Tailor\PsySH\TailorAutoCompleter;
 use drahil\Tailor\Support\DTOs\ImportResult;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
 use Psy\Configuration;
+use Psy\Readline\ShellReadlineInterface;
 use Psy\Shell;
 use ReflectionClass;
 
@@ -25,13 +27,13 @@ class TailorShellBuilder
         private readonly SessionTracker $sessionTracker,
         private readonly SessionManager $sessionManager,
         private readonly AutoSaveService $autoSaveService,
-        private readonly HistoryCaptureService $historyCaptureService,
         private readonly SessionOutputFormatter $formatter,
     ) {}
 
     public function build(ImportResult $importResult): Shell
     {
         $config = $this->createConfiguration();
+        $readline = $this->setupRecordingReadline($config);
         $autoCompleter = $this->setupAutoCompleter($config);
 
         $this->addLaravelCasters($config);
@@ -40,14 +42,14 @@ class TailorShellBuilder
         $shell = new Shell($config);
 
         $this->setAutoCompleterContext($shell, $autoCompleter);
-        $autoCompleter->setCommandNames(array_keys($shell->all()));
+        $commandNames = array_keys($shell->all());
+        $autoCompleter->setCommandNames($commandNames);
+        $readline?->setCommandNames($commandNames);
 
         if ($importResult->hasIncludeFile()) {
             $shell->setIncludes([$importResult->getIncludeFile()]);
         }
 
-        $historyFile = storage_path('tailor/tailor_history');
-        $this->historyCaptureService->markSessionStart($this->sessionTracker, $historyFile);
         $this->hookSessionTracker($shell);
         $this->setupAutoSave($shell);
 
@@ -59,8 +61,27 @@ class TailorShellBuilder
         return new Configuration([
             'startupMessage' => $this->getStartupMessage(),
             'historyFile' => storage_path('tailor/tailor_history'),
+            'historySize' => (int) config('tailor.history.limit'),
+            'eraseDuplicates' => (bool) config('tailor.history.deduplicate'),
             'useTabCompletion' => (bool) config('tailor.autocomplete.enabled'),
         ]);
+    }
+
+    /**
+     * The experimental interactive readline is left unwrapped, so commands are not recorded with it.
+     */
+    private function setupRecordingReadline(Configuration $config): ?RecordingReadline
+    {
+        $inner = $config->getReadline();
+
+        if ($inner instanceof ShellReadlineInterface) {
+            return null;
+        }
+
+        $readline = RecordingReadline::wrap($inner, $this->sessionTracker);
+        $config->setReadline($readline);
+
+        return $readline;
     }
 
     private function setupAutoCompleter(Configuration $config): TailorAutoCompleter
@@ -111,9 +132,9 @@ class TailorShellBuilder
     {
         $config->addCommands([
             new SessionListCommand(),
-            new SessionSaveCommand($this->historyCaptureService, $this->formatter),
-            new SessionExecuteCommand($this->historyCaptureService, $this->formatter),
-            new SessionAppendCommand($this->historyCaptureService),
+            new SessionSaveCommand($this->formatter),
+            new SessionExecuteCommand($this->formatter),
+            new SessionAppendCommand(),
             new SessionDeleteCommand(),
             new SessionViewCommand($this->formatter),
             new SessionEditCommand(),

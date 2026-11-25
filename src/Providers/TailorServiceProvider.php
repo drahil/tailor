@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace drahil\Tailor\Providers;
 
 use drahil\Tailor\Console\Commands\TailorCommand;
-use drahil\Tailor\Services\CommandFilterService;
-use drahil\Tailor\Services\HistoryCaptureService;
 use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Services\SessionTracker;
 use Illuminate\Support\ServiceProvider;
@@ -29,8 +27,6 @@ class TailorServiceProvider extends ServiceProvider
 
         $this->app->singleton(SessionManager::class);
         $this->app->singleton(SessionTracker::class);
-        $this->app->singleton(HistoryCaptureService::class);
-        $this->app->singleton(CommandFilterService::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

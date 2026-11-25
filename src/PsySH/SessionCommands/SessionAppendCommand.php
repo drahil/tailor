@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
-use drahil\Tailor\Services\HistoryCaptureService;
 use Exception;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -12,12 +11,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SessionAppendCommand extends SessionCommand
 {
-    public function __construct(
-        private readonly HistoryCaptureService $historyCaptureService
-    ) {
-        parent::__construct();
-    }
-
     protected function configure(): void
     {
         $this
@@ -65,8 +58,7 @@ class SessionAppendCommand extends SessionCommand
             return $this->sessionNotFoundError($output, (string) $sessionName);
         }
 
-        $historyFile = storage_path('tailor/tailor_history');
-        $commands = $this->historyCaptureService->captureCommandsSince($historyFile, $sessionTracker->getAppendStartLine());
+        $commands = $sessionTracker->getCommandsSinceAppendStart();
 
         if ($commands === []) {
             $output->writeln('<comment>No new commands to append.</comment>');
@@ -79,7 +71,7 @@ class SessionAppendCommand extends SessionCommand
             return $this->operationFailedError($output, 'append to', $e->getMessage());
         }
 
-        $this->historyCaptureService->markAppendStart($sessionTracker, $historyFile);
+        $sessionTracker->markAppendStart();
 
         $appendedCount = count($commands);
         $output->writeln(
