@@ -45,25 +45,27 @@ final class TailorProcess
         proc_close($this->process);
     }
 
+    /**
+     * Read until a prompt is shown and no more output follows, as PsySH may print the prompt twice.
+     */
     private function waitForPrompt(): string
     {
         $output = '';
         $deadline = microtime(true) + 10;
 
-        while (! str_ends_with(rtrim($output, ' '), '>') && microtime(true) < $deadline) {
+        while (microtime(true) < $deadline) {
             $read = [$this->pipes[1]];
             $write = $except = null;
+            $atPrompt = str_ends_with(rtrim($output, ' '), '>');
 
-            if (stream_select($read, $write, $except, 0, 100_000) > 0) {
+            if (stream_select($read, $write, $except, 0, $atPrompt ? 200_000 : 100_000) > 0) {
                 $output .= (string) fread($this->pipes[1], 65536);
+            } elseif ($atPrompt) {
+                return $output;
             }
         }
 
-        if (! str_ends_with(rtrim($output, ' '), '>')) {
-            throw new RuntimeException("Tailor did not show a prompt. Output so far:\n{$output}" . stream_get_contents($this->pipes[2]));
-        }
-
-        return $output;
+        throw new RuntimeException("Tailor did not show a prompt. Output so far:\n{$output}" . stream_get_contents($this->pipes[2]));
     }
 }
 
