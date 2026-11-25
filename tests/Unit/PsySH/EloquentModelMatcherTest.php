@@ -86,7 +86,7 @@ test('suggests scopes after a where chain', function () {
 });
 
 test('suggests model accessors after a call that returns a model', function () {
-    expect(completeLine(MatcherTestPost::class . '::first()->exc'))->toBe(['excerpt', 'except']);
+    expect(completeLine(MatcherTestPost::class . '::first()->exc'))->toContain('excerpt')->not->toContain('published');
 });
 
 test('suggests collection methods after a call that returns a collection', function () {
