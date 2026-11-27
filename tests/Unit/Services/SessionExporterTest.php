@@ -13,6 +13,16 @@ use PhpParser\ParserFactory;
 
 class ExportTestPost {}
 
+class ShowTestCommand
+{
+    public function __construct(protected \Symfony\Component\Console\Output\OutputInterface $output) {}
+
+    public function line(string $string): void
+    {
+        $this->output->writeln($string);
+    }
+}
+
 function exportSession(array $commands, ?string $description = null): SessionData
 {
     return new SessionData(
@@ -49,9 +59,68 @@ test('exports an Artisan command that asks in production and declares --force', 
         ->toContain('use ConfirmableTrait;')
         ->toContain("protected \$signature = 'tailor:blog-stats {--force : Run in production without confirmation}';")
         ->toContain("if (! \$this->confirmToProceed()) {\n            return self::FAILURE;\n        }")
-        ->toContain("        Post::count();\n")
+        ->toContain("        \$this->show('Post::count()', Post::count());\n")
         ->toContain('use drahil\\Tailor\\Tests\\Unit\\Services\\ExportTestPost as Post;')
         ->and(parsesAsPhp($command))->toBeTrue();
+});
+
+test('shows the value of the last expression of each command, as Tailor does', function () {
+    $command = exporter()->export(exportSession([
+        '$posts = Post::all();',
+        '$a = 1; $a + 1',
+        "Post::where('title', '<b>')\n    ->first();",
+        'dump($posts);',
+        '$a++;',
+        'foreach ([1] as $i) { $i; }',
+    ]), 'App');
+
+    expect($command)
+        ->toContain("        \$posts = Post::all();\n")
+        ->toContain("        \$a = 1; \$this->show('\$a + 1', \$a + 1);\n")
+        ->toContain("        \$this->show('Post::where(\\'title\\', \\'<b>\\') ->first()', Post::where('title', '<b>')\n            ->first());\n")
+        ->toContain("        dump(\$posts);\n")
+        ->toContain("        \$a++;\n")
+        ->toContain("        foreach ([1] as \$i) { \$i; }\n")
+        ->toContain('private function show(string $code, mixed $value): void')
+        ->toContain("use JsonSerializable;\n")
+        ->and(parsesAsPhp($command))->toBeTrue();
+});
+
+test('leaves out show() when no command has a value to show', function () {
+    $command = exporter()->export(exportSession(['$a = 1;', 'dump($a);']), 'App');
+
+    expect($command)->not->toContain('function show')
+        ->not->toContain('JsonSerializable');
+});
+
+test('the show() helper prints values as JSON and other objects by class', function () {
+    $code = exporter()->export(exportSession(['1 + 1']), 'Tailor\\ExportShowTest');
+    eval(str_replace(
+        ['<?php', 'extends Command', 'use ConfirmableTrait;'],
+        ['', 'extends \\drahil\\Tailor\\Tests\\Unit\\Services\\ShowTestCommand', ''],
+        $code
+    ));
+
+    $output = new \Symfony\Component\Console\Output\BufferedOutput();
+    $command = new \Tailor\ExportShowTest\BlogStats($output);
+    $show = new \ReflectionMethod($command, 'show');
+
+    $show->invoke($command, '1 + 1', 2);
+    $show->invoke($command, '$posts->pluck(\'title\')', collect(['<b>First</b>', 'Ünïcode/slash']));
+    $show->invoke($command, 'new ArrayObject()', new \ArrayObject());
+
+    expect($output->fetch())->toBe(<<<'TEXT'
+    > 1 + 1
+    2
+    > $posts->pluck('title')
+    [
+        "<b>First</b>",
+        "Ünïcode/slash"
+    ]
+    > new ArrayObject()
+    ArrayObject
+
+    TEXT);
 });
 
 test('imports global classes and facade aliases', function () {

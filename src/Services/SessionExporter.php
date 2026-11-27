@@ -7,6 +7,7 @@ namespace drahil\Tailor\Services;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\Storage\SessionFile;
 use Illuminate\Support\Str;
+use PhpParser\Error;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
@@ -30,11 +31,15 @@ class SessionExporter
      */
     public function __construct(private readonly array $aliases = []) {}
 
+    private const SILENT_FUNCTIONS = ['dd', 'dump', 'print_r', 'printf', 'var_dump', 'var_export'];
+
     public function export(SessionData $session, string $namespace): string
     {
-        $code = implode("\n", array_map(SessionFile::renderCommand(...), $session->commands));
+        $commands = array_map(SessionFile::renderCommand(...), $session->commands);
+        $imports = $this->imports(implode("\n", $commands));
+        $shown = array_map($this->showResult(...), $commands);
 
-        return $this->renderCommand($session, $code, $this->imports($code), $namespace);
+        return $this->renderCommand($session, implode("\n", $shown), $imports, $namespace, $shown !== $commands);
     }
 
     /**
@@ -112,13 +117,42 @@ class SessionExporter
     /**
      * @param array<int, string> $imports
      */
-    private function renderCommand(SessionData $session, string $code, array $imports, string $namespace): string
+    private function renderCommand(SessionData $session, string $code, array $imports, string $namespace, bool $shows): string
     {
         $name = $session->metadata->name->toString();
         $class = self::className($name);
         $description = str_replace(['\\', "'"], ['\\\\', "\\'"], $session->metadata->description?->toString() ?? "Run the {$name} Tailor session");
         $imports = array_merge($imports, ['Illuminate\\Console\\Command', 'Illuminate\\Console\\ConfirmableTrait']);
         $body = preg_replace('/^(?=.)/m', '        ', $code);
+        $show = '';
+
+        if ($shows) {
+            $imports = array_merge($imports, [
+                'Illuminate\\Contracts\\Support\\Arrayable',
+                'JsonSerializable',
+                'stdClass',
+                'Symfony\\Component\\Console\\Formatter\\OutputFormatter',
+                'Symfony\\Component\\Console\\Output\\OutputInterface',
+            ]);
+            $show = <<<'PHP'
+
+
+                private function show(string $code, mixed $value): void
+                {
+                    $this->line('<comment>> ' . OutputFormatter::escape($code) . '</comment>');
+
+                    if ($value instanceof Arrayable) {
+                        $value = $value->toArray();
+                    }
+
+                    $text = is_object($value) && ! $value instanceof JsonSerializable && ! $value instanceof stdClass
+                        ? $value::class
+                        : json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+                    $this->output->writeln((string) $text, OutputInterface::OUTPUT_RAW);
+                }
+            PHP;
+        }
 
         return <<<PHP
         <?php
@@ -142,10 +176,55 @@ class SessionExporter
         {$body}
 
                 return self::SUCCESS;
-            }
+            }{$show}
         }
 
         PHP;
+    }
+
+    /**
+     * Wrap the command's last statement in show() when it is an expression whose value Tailor would print.
+     */
+    private function showResult(string $command): string
+    {
+        try {
+            $statements = (new ParserFactory())->createForNewestSupportedVersion()->parse("<?php\n{$command}") ?? [];
+        } catch (Error) {
+            return $command;
+        }
+
+        $last = end($statements);
+
+        if (! $last instanceof Node\Stmt\Expression || ! $this->hasPrintableValue($last->expr)) {
+            return $command;
+        }
+
+        $offset = strlen("<?php\n");
+        $start = $last->expr->getStartFilePos() - $offset;
+        $end = $last->expr->getEndFilePos() - $offset + 1;
+        $expression = substr($command, $start, $end - $start);
+        $label = str_replace(['\\', "'"], ['\\\\', "\\'"], (string) preg_replace('/\s+/', ' ', $expression));
+
+        return substr($command, 0, $start) . "\$this->show('{$label}', {$expression})" . substr($command, $end);
+    }
+
+    private function hasPrintableValue(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Node\Expr\FuncCall && $expr->name instanceof Name) {
+            return ! in_array($expr->name->toLowerString(), self::SILENT_FUNCTIONS, true);
+        }
+
+        return ! ($expr instanceof Node\Expr\Assign
+            || $expr instanceof Node\Expr\AssignOp
+            || $expr instanceof Node\Expr\AssignRef
+            || $expr instanceof Node\Expr\PreInc
+            || $expr instanceof Node\Expr\PreDec
+            || $expr instanceof Node\Expr\PostInc
+            || $expr instanceof Node\Expr\PostDec
+            || $expr instanceof Node\Expr\Print_
+            || $expr instanceof Node\Expr\Exit_
+            || $expr instanceof Node\Expr\Include_
+            || $expr instanceof Node\Expr\Throw_);
     }
 
     /**
@@ -158,7 +237,7 @@ class SessionExporter
         }
 
         $imports = array_unique($imports);
-        sort($imports);
+        sort($imports, SORT_STRING | SORT_FLAG_CASE);
 
         return implode("\n", array_map(fn (string $import) => "use {$import};", $imports)) . "\n\n";
     }

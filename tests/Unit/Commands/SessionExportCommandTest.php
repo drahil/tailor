@@ -78,7 +78,7 @@ test('overwrites an existing file with --force', function () {
     $this->tester->execute(['name' => 'blog-stats', '--path' => $this->directory, '--force' => true]);
 
     expect($this->tester->getStatusCode())->toBe(0)
-        ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toContain('NoSuchThing::count();');
+        ->and(file_get_contents("{$this->directory}/BlogStats.php"))->toContain('NoSuchThing::count()');
 });
 
 test('fails when the session does not exist', function () {

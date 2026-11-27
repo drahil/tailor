@@ -96,7 +96,7 @@ session:export my-work                                     # app/Console/Command
 session:export my-work --path=app/Console/Commands/Tailor  # Another folder, namespace App\Console\Commands\Tailor
 session:export my-work --force                             # Overwrite an existing file
 ```
-Run it with `php artisan tailor:my-work`, no Tailor shell needed. The namespace follows the folder through Composer's PSR-4 map. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Class names become `use` statements, including facades such as `DB` and global classes such as `Exception`.
+Run it with `php artisan tailor:my-work`, no Tailor shell needed. The namespace follows the folder through Composer's PSR-4 map. Exported commands always ask for confirmation in production, also for sessions tagged `safe-for-prod`; `--force` skips the question. Class names become `use` statements, including facades such as `DB` and global classes such as `Exception`. Like in Tailor, the value of each command is printed (as JSON, so models respect `$hidden`; other objects by class name), except for assignments and calls such as `dump()`; `-q` hides it.
 
 **Rename a session:**
 ```bash
