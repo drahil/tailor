@@ -6,29 +6,33 @@ namespace drahil\Tailor\Support\DTOs;
 
 final readonly class ImportResult
 {
+    /**
+     * @param array<string, string> $aliases Alias => FQN of the auto-imported classes
+     */
     private function __construct(
-        private bool $successful,
         private ?string $includeFile,
+        private array $aliases = [],
     ) {}
 
-    public static function success(string $includeFile): self
+    /**
+     * @param array<string, string> $aliases
+     */
+    public static function success(string $includeFile, array $aliases = []): self
     {
-        return new self(true, $includeFile);
-    }
-
-    public static function failed(): self
-    {
-        return new self(false, null);
+        return new self($includeFile, $aliases);
     }
 
     public static function empty(): self
     {
-        return new self(true, null);
+        return new self(null);
     }
 
-    public function isSuccessful(): bool
+    /**
+     * @return array<string, string>
+     */
+    public function getAliases(): array
     {
-        return $this->successful;
+        return $this->aliases;
     }
 
     public function hasIncludeFile(): bool

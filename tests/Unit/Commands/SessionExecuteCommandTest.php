@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use drahil\Tailor\PsySH\SessionCommands\SessionExecuteCommand;
+use drahil\Tailor\Services\SessionTracker;
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
 use drahil\Tailor\Support\Formatting\SessionOutputFormatter;
@@ -14,6 +15,8 @@ beforeEach(function () {
     $this->sessionManager = mockSessionManager();
     $this->formatter = Mockery::mock(SessionOutputFormatter::class);
 
+    $this->sessionTracker = new SessionTracker();
+
     $this->command = new SessionExecuteCommand($this->formatter);
 
     /* Mock the PsySH application */
@@ -23,6 +26,9 @@ beforeEach(function () {
     $this->app->shouldReceive('getScopeVariable')
         ->with('__sessionManager')
         ->andReturn($this->sessionManager);
+    $this->app->shouldReceive('getScopeVariable')
+        ->with('__sessionTracker')
+        ->andReturn($this->sessionTracker);
 
     $this->command->setApplication($this->app);
     $this->tester = createCommandTester($this->command);
@@ -38,11 +44,9 @@ test('executes session commands successfully', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'echo "test"', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => '$x = 5', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
+            'echo "test"',
+            '$x = 5',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -73,77 +77,71 @@ test('executes session commands successfully', function () {
         ->and($this->tester->getDisplay())->toContain('Executed 2 command(s)');
 });
 
-test('skips history marker commands', function () {
+test('stops at the first failure and does not run the rest', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '_HiStOrY_V2_', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => 'echo "test"', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
+            '$a = 1',
+            '$user->delete()',
+            '$b = 2',
+            '$c = 3',
+            '$d = 4',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->once()
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayExecutionHeader')
-        ->once();
-
-    $this->app
-        ->shouldReceive('execute')
-        ->once()
-        ->andReturn(null);
-
-    $this->tester->execute(['name' => 'test-session']);
-
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)');
-});
-
-test('handles command execution errors gracefully', function () {
-    $sessionData = new SessionData(
-        metadata: new SessionMetadata(
-            name: SessionName::from('test-session'),
-        ),
-        commands: [
-            ['code' => 'throw new Exception("test")', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => 'echo "ok"', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
-        ],
-        variables: [],
-        sessionMetadata: []
-    );
-
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->once()
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayExecutionHeader')
-        ->once();
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
 
     $this->app
         ->shouldReceive('execute')
         ->twice()
         ->andReturnUsing(function ($code) {
-            if (str_contains($code, 'Exception')) {
-                throw new Exception('test');
+            if ($code === '$user->delete()') {
+                throw new Error('Call to a member function delete() on null');
             }
             return null;
         });
 
     $this->tester->execute(['name' => 'test-session']);
 
-    expect($this->tester->getStatusCode())->toBe(0)
-        ->and($this->tester->getDisplay())->toContain('Executed 1 command(s)')
-        ->and($this->tester->getDisplay())->toContain('(1 failed)')
-        ->and($this->tester->getDisplay())->toContain('Failed to execute');
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Failed to execute: Call to a member function delete() on null')
+        ->and($this->tester->getDisplay())->toContain('Stopped after 2 of 5 command(s); 3 not run.')
+        ->and($this->tester->getDisplay())->not->toContain('$b = 2');
+});
+
+test('counts PHP errors such as parse errors as failures', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            '$a =',
+        ],
+    );
+
+    $this->sessionManager
+        ->shouldReceive('load')
+        ->once()
+        ->andReturn($sessionData);
+
+    $this->formatter
+        ->shouldReceive('displayExecutionHeader')
+        ->once();
+
+    $this->app
+        ->shouldReceive('execute')
+        ->once()
+        ->with('$a =', true)
+        ->andThrow(new ParseError('syntax error, unexpected end of file'));
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Stopped after 1 of 1 command(s); 0 not run.')
+        ->and($this->tester->getDisplay())->toContain('syntax error');
 });
 
 test('displays error when session does not exist', function () {
@@ -165,16 +163,14 @@ test('displays error for invalid session name', function () {
         ->and($this->tester->getDisplay())->toContain('Session name cannot be empty');
 });
 
-test('decodes URL-encoded commands before execution', function () {
+test('executes plain code unchanged', function () {
     $sessionData = new SessionData(
         metadata: new SessionMetadata(
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'echo+%22hello%22', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            '$i++ + 1 . sprintf("%20s", "x")',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -189,7 +185,7 @@ test('decodes URL-encoded commands before execution', function () {
     $this->app
         ->shouldReceive('execute')
         ->once()
-        ->with('echo "hello"')
+        ->with('$i++ + 1 . sprintf("%20s", "x")', true)
         ->andReturn(null);
 
     $this->tester->execute(['name' => 'test-session']);
@@ -203,12 +199,10 @@ test('displays execution output with command count', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => '$a = 1', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-            ['code' => '$b = 2', 'output' => null, 'timestamp' => '2025-01-15 10:00:01', 'order' => 2],
-            ['code' => '$c = 3', 'output' => null, 'timestamp' => '2025-01-15 10:00:02', 'order' => 3],
+            '$a = 1',
+            '$b = 2',
+            '$c = 3',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -229,4 +223,151 @@ test('displays execution output with command count', function () {
 
     expect($this->tester->getStatusCode())->toBe(0)
         ->and($this->tester->getDisplay())->toContain('Executed 3 command(s)');
+});
+
+test('makes the executed session active for session:append', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            '$a = 1',
+        ],
+    );
+
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
+    $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+    $this->sessionTracker->addCommand('$earlier = 1');
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->sessionTracker->getActiveSession())->toBe('test-session')
+        ->and($this->sessionTracker->getCommandsSinceAppendStart())->toBe([])
+        ->and($this->tester->getDisplay())->toContain("'test-session' is active. Use session:append");
+});
+
+test('still activates the session after failed replays, with a warning', function () {
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(
+            name: SessionName::from('test-session'),
+        ),
+        commands: [
+            '$a =',
+        ],
+    );
+
+    $this->sessionManager->shouldReceive('load')->once()->andReturn($sessionData);
+    $this->formatter->shouldReceive('displayExecutionHeader')->once();
+    $this->app->shouldReceive('execute')->once()->andThrow(new ParseError('syntax error'));
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->sessionTracker->getActiveSession())->toBe('test-session')
+        ->and($this->tester->getDisplay())->toContain('replay stopped at a failed command');
+});
+
+test('displays error when no session name is given', function () {
+    $this->tester->execute([]);
+
+    expect($this->tester->getStatusCode())->toBe(1)
+        ->and($this->tester->getDisplay())->toContain('Session name cannot be empty');
+});
+
+function productionSession(array $tags = []): SessionData
+{
+    return new SessionData(
+        metadata: new SessionMetadata(name: SessionName::from('cleanup'), tags: $tags),
+        commands: ['User::query()->delete()'],
+    );
+}
+
+describe('in production', function () {
+    beforeEach(function () {
+        config(['app.env' => 'production']);
+        $this->formatter->shouldReceive('displayExecutionHeader')->byDefault();
+    });
+
+    afterEach(function () {
+        config(['app.env' => null]);
+    });
+
+    test('lists the commands and cancels an untagged session when declined', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands')->once();
+        $this->app->shouldNotReceive('execute');
+
+        $this->tester->setInputs(['n']);
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())
+            ->toContain("You are in production and 'cleanup' is not tagged 'safe-for-prod'.")
+            ->toContain('Execute it anyway? [y/N]')
+            ->toContain('Execution cancelled.');
+    });
+
+    test('cancels an untagged session when input ends without an answer', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands');
+        $this->app->shouldNotReceive('execute');
+
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->toContain('Execution cancelled.');
+    });
+
+    test('executes an untagged session when confirmed', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->formatter->shouldReceive('displayCommands');
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->setInputs(['y']);
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->toContain('Executed 1 command(s)');
+    });
+
+    test('executes a session tagged safe-for-prod without asking', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession(['Safe-For-Prod']));
+        $this->formatter->shouldNotReceive('displayCommands');
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup']);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?')
+            ->toContain('Executed 1 command(s)');
+    });
+
+    test('uses the configured safe tag', function () {
+        config(['tailor.production.safe_tag' => 'reviewed']);
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession(['reviewed']));
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup']);
+        config(['tailor.production.safe_tag' => null]);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
+    });
+
+    test('executes an untagged session without asking when forced', function () {
+        $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+        $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+        $this->tester->execute(['name' => 'cleanup', '--force' => true]);
+
+        expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
+    });
+});
+
+test('does not ask outside production', function () {
+    config(['app.env' => 'local']);
+    $this->sessionManager->shouldReceive('load')->andReturn(productionSession());
+    $this->formatter->shouldReceive('displayExecutionHeader');
+    $this->app->shouldReceive('execute')->once()->andReturn(null);
+
+    $this->tester->execute(['name' => 'cleanup']);
+    config(['app.env' => null]);
+
+    expect($this->tester->getDisplay())->not->toContain('Execute it anyway?');
 });

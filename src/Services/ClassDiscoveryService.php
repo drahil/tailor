@@ -22,25 +22,70 @@ readonly class ClassDiscoveryService
      */
     public function discoverClasses(): array
     {
-        $psr4Mappings = $this->getComposerPsr4Mappings();
         $classes = [];
 
-        foreach ($psr4Mappings as $namespace => $directories) {
+        foreach ($this->getScannableDirectories() as [$namespace, $directory]) {
+            $classes = array_merge($classes, $this->scanDirectory($namespace, $directory));
+        }
+
+        return $classes;
+    }
+
+    /**
+     * Hash of the scanned files and their modification times, without reading them.
+     */
+    public function fingerprint(): string
+    {
+        $autoloadFile = $this->getComposerAutoloadPath();
+        $parts = [$autoloadFile . ':' . (file_exists($autoloadFile) ? filemtime($autoloadFile) : 0)];
+
+        foreach ($this->getScannableDirectories() as [$namespace, $directory]) {
+            $parts[] = $namespace . '=' . $directory;
+
+            try {
+                foreach ($this->createFinder($directory) as $file) {
+                    $parts[] = $file->getPathname() . ':' . $file->getMTime();
+                }
+            } catch (\Exception) {
+                continue;
+            }
+        }
+
+        sort($parts);
+
+        return md5(implode("\n", $parts));
+    }
+
+    /**
+     * @return array<int, array{0: string, 1: string}> Pairs of namespace and directory
+     */
+    private function getScannableDirectories(): array
+    {
+        $directories = [];
+
+        foreach ($this->getComposerPsr4Mappings() as $namespace => $paths) {
             if (! $this->shouldScanNamespace($namespace)) {
                 continue;
             }
 
-            foreach ((array) $directories as $directory) {
-                if (! is_dir($directory)) {
-                    continue;
+            foreach ((array) $paths as $directory) {
+                if (is_dir($directory)) {
+                    $directories[] = [$namespace, $directory];
                 }
-
-                $discovered = $this->scanDirectory($namespace, $directory);
-                $classes = array_merge($classes, $discovered);
             }
         }
 
-        return $classes;
+        return $directories;
+    }
+
+    private function createFinder(string $directory): Finder
+    {
+        return (new Finder())
+            ->files()
+            ->in($directory)
+            ->name('*.php')
+            ->notPath('#(^|/)tests/#')
+            ->ignoreDotFiles(true);
     }
 
     /**
@@ -64,19 +109,7 @@ readonly class ClassDiscoveryService
      */
     private function getComposerAutoloadPath(): string
     {
-        $vendorDir = getcwd() . '/vendor';
-
-        for ($i = 0; $i < 5; $i++) {
-            $autoloadPath = $vendorDir . '/composer/autoload_psr4.php';
-
-            if (file_exists($autoloadPath)) {
-                return $autoloadPath;
-            }
-
-            $vendorDir = dirname($vendorDir, 2) . '/vendor';
-        }
-
-        return '';
+        return base_path('vendor/composer/autoload_psr4.php');
     }
 
     /**
@@ -85,7 +118,7 @@ readonly class ClassDiscoveryService
     private function shouldScanNamespace(string $namespace): bool
     {
         $namespaces = $this->scannableNamespaces
-            ?? config('tailor.discovery.scannable_namespaces', ['App\\']);
+            ?? config('tailor.discovery.scannable_namespaces');
 
         foreach ($namespaces as $scannableNamespace) {
             if (str_starts_with($namespace, $scannableNamespace)) {
@@ -104,18 +137,9 @@ readonly class ClassDiscoveryService
     private function scanDirectory(string $baseNamespace, string $directory): array
     {
         $classes = [];
-        $finder = new Finder();
 
         try {
-            $finder->files()
-                ->in($directory)
-                ->name('*.php')
-                ->notPath('database/migrations')
-                ->notPath('database/seeders')
-                ->notPath('tests')
-                ->ignoreDotFiles(true);
-
-            foreach ($finder as $file) {
+            foreach ($this->createFinder($directory) as $file) {
                 $classNames = $this->extractClassNames($file->getContents());
 
                 foreach ($classNames as $className) {
@@ -162,9 +186,13 @@ readonly class ClassDiscoveryService
             }
 
             if (in_array($tokens[$i][0], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+                if ($this->previousSignificantToken($tokens, $i) === T_DOUBLE_COLON) {
+                    continue;
+                }
+
                 for ($j = $i + 1; $j < $count; $j++) {
                     if (! is_array($tokens[$j])) {
-                        continue;
+                        break;
                     }
 
                     if ($tokens[$j][0] === T_WHITESPACE) {
@@ -182,5 +210,25 @@ readonly class ClassDiscoveryService
         }
 
         return $classes;
+    }
+
+    /**
+     * @param array<int, array{0: int, 1: string, 2: int}|string> $tokens
+     */
+    private function previousSignificantToken(array $tokens, int $index): int|string|null
+    {
+        for ($k = $index - 1; $k >= 0; $k--) {
+            $token = $tokens[$k];
+
+            if (! is_array($token)) {
+                return $token;
+            }
+
+            if (! in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+                return $token[0];
+            }
+        }
+
+        return null;
     }
 }

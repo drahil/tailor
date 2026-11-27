@@ -6,209 +6,167 @@ namespace drahil\Tailor\Services;
 
 use drahil\Tailor\Support\DTOs\SessionData;
 use drahil\Tailor\Support\DTOs\SessionMetadata;
+use drahil\Tailor\Support\Storage\SessionFile;
 use drahil\Tailor\Support\ValueObjects\SessionName;
-use Exception;
-use Illuminate\Contracts\Container\Singleton;
-use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
+use Psy\Util\Str;
 use RuntimeException;
 use Throwable;
 
 /**
- * Manages session storage and retrieval.
- *
- * Handles saving, loading, listing, and deleting sessions
- * using a file-based storage system.
+ * Stores sessions as editable PHP files.
  */
-#[Singleton]
 class SessionManager
 {
-    /**
-     * Path to the sessions storage directory.
-     */
     protected string $storagePath;
 
-    /**
-     * Create a new SessionManager instance.
-     */
     public function __construct(?string $storagePath = null)
     {
-        $this->storagePath = $storagePath ?? config('tailor.storage.sessions', storage_path('tailor/sessions'));
+        $this->storagePath = $storagePath ?? config('tailor.storage.sessions');
         $this->ensureStorageDirectoryExists();
+        $this->convertLegacySessions();
     }
 
-    /**
-     * Check if a session exists.
-     */
     public function exists(SessionName|string $name): bool
     {
-        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
-        return File::exists($this->getSessionPath($sessionName));
+        return File::exists($this->getSessionPath($this->toSessionName($name)));
     }
 
     /**
-     * Save a session with metadata and tracker data.
+     * Save a session with metadata and tracker data, keeping the creation date of an existing session.
      *
-     * @throws RuntimeException|FileNotFoundException
+     * @throws RuntimeException
      */
     public function save(SessionMetadata $metadata, SessionTracker $tracker): void
     {
-        $sessionPath = $this->getSessionPath($metadata->name);
-
         $existingCreatedAt = null;
         if ($this->exists($metadata->name)) {
-            $existing = $this->load($metadata->name);
-            $existingCreatedAt = $existing->metadata->createdAt;
+            try {
+                $existingCreatedAt = $this->load($metadata->name)->metadata->createdAt;
+            } catch (RuntimeException) {
+            }
         }
 
         $sessionData = SessionData::fromTracker(
-            metadata: new SessionMetadata(
+            new SessionMetadata(
                 name: $metadata->name,
                 description: $metadata->description,
                 tags: $metadata->tags,
                 createdAt: $existingCreatedAt ?? $metadata->createdAt,
                 updatedAt: $metadata->updatedAt,
-                laravelVersion: app()->version(),
-                phpVersion: PHP_VERSION,
             ),
-            tracker: $tracker
+            $tracker
         );
 
-        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-        if ($json === false) {
-            throw new RuntimeException('Failed to encode session data to JSON: ' . json_last_error_msg());
-        }
-
-        if (File::put($sessionPath, $json) === false) {
-            throw new RuntimeException("Failed to write session to file: {$sessionPath}");
-        }
+        $this->write($this->getSessionPath($metadata->name), $sessionData);
     }
 
     /**
-     * Load a session by name.
+     * Append commands to the end of an existing session.
      *
-     * @throws RuntimeException|FileNotFoundException|Exception
+     * @param array<int, string> $commands
+     * @throws RuntimeException
+     */
+    public function append(SessionName $name, array $commands): SessionData
+    {
+        $existing = $this->load($name);
+
+        $sessionData = new SessionData(
+            $existing->metadata->withUpdatedTimestamp(),
+            [...$existing->commands, ...$commands],
+        );
+
+        $this->write($this->getSessionPath($name), $sessionData);
+
+        return $sessionData;
+    }
+
+    /**
+     * @throws RuntimeException
      */
     public function load(SessionName|string $name): SessionData
     {
-        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
+        $sessionName = $this->toSessionName($name);
 
         if (! $this->exists($sessionName)) {
             throw new RuntimeException("Session '{$sessionName}' does not exist.");
         }
 
         $sessionPath = $this->getSessionPath($sessionName);
-        $json = File::get($sessionPath);
 
-        $data = json_decode($json, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        try {
+            return SessionFile::parse(File::get($sessionPath), $sessionName);
+        } catch (Throwable $e) {
             throw new RuntimeException(
-                "Failed to decode session '{$sessionName}': " . json_last_error_msg()
+                "Session '{$sessionName}' is damaged ({$e->getMessage()}). Fix or delete {$sessionPath}, or replace it with 'session:save {$sessionName} --force'."
             );
         }
-
-        return SessionData::fromArray($data);
     }
 
     /**
-     * List all available sessions with optional tag filtering.
+     * List all sessions, newest first, optionally only those that have all of the given tags.
      *
-     * @param array<string> $filterTags If provided, only sessions containing ALL these tags
+     * @param array<string> $filterTags
      * @return array<int, array{
      *     name: string,
      *     description: string|null,
      *     tags: array<int, string>,
      *     created_at: string|null,
      *     updated_at: string|null,
-     *     command_count: int,
-     *     laravel_version: string|null}>
+     *     command_count: int}>
      */
     public function list(array $filterTags = []): array
     {
         $this->ensureStorageDirectoryExists();
 
-        $files = File::glob($this->storagePath . '/*.json');
         $sessions = [];
 
-        foreach ($files as $file) {
+        foreach (File::glob($this->storagePath . '/*.php') as $file) {
             try {
-                $sessionData = json_decode(File::get($file), true);
-
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $sessionTags = $sessionData['tags'] ?? [];
-
-                    if (! empty($filterTags) && ! $this->hasAllTags($sessionTags, $filterTags)) {
-                        continue;
-                    }
-
-                    $sessions[] = [
-                        'name' => $sessionData['name'] ?? basename($file, '.json'),
-                        'description' => $sessionData['description'] ?? null,
-                        'tags' => $sessionTags,
-                        'created_at' => $sessionData['created_at'] ?? null,
-                        'updated_at' => $sessionData['updated_at'] ?? null,
-                        'command_count' => $sessionData['metadata']['total_commands'] ?? count($sessionData['commands'] ?? []),
-                        'laravel_version' => $sessionData['laravel_version'] ?? null,
-                    ];
-                }
-            } catch (Throwable $e) {
+                $sessionData = SessionFile::parse(File::get($file), SessionName::from(basename($file, '.php')));
+            } catch (Throwable) {
                 continue;
             }
+
+            $metadata = $sessionData->metadata;
+
+            if ($filterTags !== [] && ! $this->hasAllTags($metadata->tags, $filterTags)) {
+                continue;
+            }
+
+            $sessions[] = [
+                'name' => $metadata->name->toString(),
+                'description' => $metadata->description?->toString(),
+                'tags' => $metadata->tags,
+                'created_at' => $metadata->createdAt?->format('c'),
+                'updated_at' => $metadata->updatedAt?->format('c'),
+                'command_count' => $sessionData->getCommandCount(),
+            ];
         }
 
-        usort($sessions, function ($a, $b) {
-            return strcmp($b['updated_at'] ?? '', $a['updated_at'] ?? '');
-        });
+        usort($sessions, fn ($a, $b) => strcmp($b['updated_at'] ?? '', $a['updated_at'] ?? ''));
 
         return $sessions;
     }
 
     /**
-     * Check if a session has all specified tags.
-     *
-     * @param array<string> $sessionTags
-     * @param array<string> $filterTags
-     */
-    private function hasAllTags(array $sessionTags, array $filterTags): bool
-    {
-        return empty(array_diff($filterTags, $sessionTags));
-    }
-
-    /**
-     * Update an existing session with new data.
-     *
      * @throws RuntimeException
      */
     public function update(SessionData $sessionData): void
     {
         if (! $this->exists($sessionData->metadata->name)) {
-            throw new RuntimeException(
-                "Session '{$sessionData->metadata->name}' does not exist."
-            );
+            throw new RuntimeException("Session '{$sessionData->metadata->name}' does not exist.");
         }
 
-        $sessionPath = $this->getSessionPath($sessionData->metadata->name);
-        $json = json_encode($sessionData->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-        if ($json === false) {
-            throw new RuntimeException('Failed to encode session data: ' . json_last_error_msg());
-        }
-
-        if (File::put($sessionPath, $json) === false) {
-            throw new RuntimeException("Failed to update session: {$sessionPath}");
-        }
+        $this->write($this->getSessionPath($sessionData->metadata->name), $sessionData);
     }
 
     /**
-     * Delete a session.
-     *
      * @throws RuntimeException
      */
     public function delete(SessionName|string $name): bool
     {
-        $sessionName = $name instanceof SessionName ? $name : SessionName::from($name);
+        $sessionName = $this->toSessionName($name);
 
         if (! $this->exists($sessionName)) {
             throw new RuntimeException("Session '{$sessionName}' does not exist.");
@@ -218,26 +176,132 @@ class SessionManager
     }
 
     /**
-     * Get the full path to a session file.
+     * Rename a session, replacing any session that already has the new name.
+     *
+     * @throws RuntimeException
      */
-    protected function getSessionPath(SessionName $name): string
+    public function rename(SessionName|string $from, SessionName|string $to): void
     {
-        $safeName = basename($name->toString());
+        $from = $this->toSessionName($from);
+        $to = $this->toSessionName($to);
 
-        if (! str_ends_with($safeName, '.json')) {
-            $safeName .= '.json';
+        if (! $this->exists($from)) {
+            throw new RuntimeException("Session '{$from}' does not exist.");
         }
 
-        return $this->storagePath . '/' . $safeName;
+        $target = $this->storagePath . '/' . $to->toString() . '.php';
+        $replaced = $this->exists($to) ? $this->getSessionPath($to) : null;
+
+        if (! File::move($this->getSessionPath($from), $target)) {
+            throw new RuntimeException("Could not rename session '{$from}' to '{$to}'.");
+        }
+
+        if ($replaced !== null && $replaced !== $target) {
+            File::delete($replaced);
+        }
     }
 
     /**
-     * Ensure the storage directory exists.
+     * Get the session file path, also matching files saved under a different letter case.
      */
+    protected function getSessionPath(SessionName $name): string
+    {
+        $path = $this->storagePath . '/' . $name->toString() . '.php';
+
+        if (file_exists($path)) {
+            return $path;
+        }
+
+        foreach (File::glob($this->storagePath . '/*.php') as $file) {
+            if (strtolower(basename($file)) === basename($path)) {
+                return $file;
+            }
+        }
+
+        return $path;
+    }
+
     protected function ensureStorageDirectoryExists(): void
     {
         if (! File::isDirectory($this->storagePath)) {
             File::makeDirectory($this->storagePath, 0755, true);
         }
+    }
+
+    /**
+     * Convert sessions saved by earlier versions as JSON into PHP files.
+     * Files that cannot be converted are left untouched.
+     */
+    private function convertLegacySessions(): void
+    {
+        foreach (File::glob($this->storagePath . '/*.json') as $jsonFile) {
+            try {
+                $name = SessionName::from(basename($jsonFile, '.json'));
+
+                if ($this->exists($name)) {
+                    continue;
+                }
+
+                $data = json_decode(File::get($jsonFile), true, flags: JSON_THROW_ON_ERROR);
+                $commands = [];
+
+                foreach ($data['commands'] ?? [] as $command) {
+                    $code = $command['code'];
+
+                    if ($code !== '_HiStOrY_V2_') {
+                        $commands[] = str_contains($code, '\\040') ? Str::unvis($code) : $code;
+                    }
+                }
+
+                $metadata = SessionMetadata::fromArray(['name' => $name->toString()] + $data);
+                $this->write($this->getSessionPath($name), new SessionData($metadata, $commands));
+                File::delete($jsonFile);
+            } catch (Throwable) {
+                continue;
+            }
+        }
+    }
+
+    /**
+     * @param array<string> $sessionTags
+     * @param array<string> $filterTags
+     */
+    private function hasAllTags(array $sessionTags, array $filterTags): bool
+    {
+        return empty(array_diff(
+            array_map('strtolower', $filterTags),
+            array_map('strtolower', $sessionTags)
+        ));
+    }
+
+    /**
+     * Write session data atomically through a temporary file and rename.
+     *
+     * @throws RuntimeException
+     */
+    private function write(string $sessionPath, SessionData $sessionData): void
+    {
+        $tempPath = @tempnam(dirname($sessionPath), 'tailor-session-');
+
+        if ($tempPath === false || file_put_contents($tempPath, SessionFile::render($sessionData)) === false) {
+            if ($tempPath !== false) {
+                @unlink($tempPath);
+            }
+
+            throw new RuntimeException("Failed to write session to file: {$sessionPath}");
+        }
+
+        @chmod($tempPath, 0666 & ~umask());
+
+        if (! rename($tempPath, $sessionPath)) {
+            @unlink($tempPath);
+
+            throw new RuntimeException("Failed to write session to file: {$sessionPath}");
+        }
+    }
+
+    private function toSessionName(SessionName|string $name): SessionName
+    {
+        return $name instanceof SessionName ? $name : SessionName::from($name);
     }
 }

@@ -16,14 +16,17 @@ use Stringable;
  */
 final readonly class SessionName implements Stringable
 {
-    public function __construct(
-        #[NotEmpty(message: 'Session name cannot be empty')]
-        #[Pattern(
-            pattern: '/^[a-zA-Z0-9_-]+$/',
-            message: 'Session name must contain only alphanumeric characters, hyphens, and underscores'
-        )]
-        private string $value
-    ) {
+    #[NotEmpty(message: 'Session name cannot be empty')]
+    #[Pattern(
+        pattern: '/^[a-z0-9_-]+$/',
+        message: 'Session name must contain only alphanumeric characters, hyphens, and underscores'
+    )]
+    private string $value;
+
+    public function __construct(string $value)
+    {
+        $this->value = strtolower(trim($value));
+
         AttributeValidator::validateOrFail($this);
     }
 

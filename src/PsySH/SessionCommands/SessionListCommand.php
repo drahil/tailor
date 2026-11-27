@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\PsySH\SessionCommands;
 
+use DateTime;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionTags;
+use Exception;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,19 +17,19 @@ class SessionListCommand extends SessionCommand
     protected function configure(): void
     {
         $this
-            ->setName('session:list')
+            ->setName('session:ls')
             ->setAliases(['sessions'])
             ->setDescription('List all saved sessions')
             ->setHelp(<<<HELP
   Display a list of all saved Tailor sessions.
 
   Usage:
-    session:list                           List all sessions
-    session:list --tag=api                 Filter by single tag
-    session:list --tag=api --tag=debug    Filter by multiple tags (all must match)
+    session:ls                             List all sessions
+    session:ls --tag=api                   Filter by single tag
+    session:ls --tag=api --tag=debug       Filter by multiple tags (all must match)
 
   Examples:
-    >>> session:list
+    >>> session:ls
     >>> sessions --tag=testing
     >>> sessions -t api -t debug
   HELP
@@ -71,14 +73,28 @@ class SessionListCommand extends SessionCommand
                 : '';
 
             $output->writeln(sprintf(
-                '  <fg=cyan>%s</> - %s (%d commands)%s',
+                '  <fg=cyan>%s</> - %s (%d %s)%s',
                 $session['name'],
-                $session['created_at'],
+                $this->formatDate($session['created_at']),
                 $session['command_count'],
+                $session['command_count'] === 1 ? 'command' : 'commands',
                 $tagsDisplay
             ));
         }
 
         return 0;
+    }
+
+    private function formatDate(?string $date): string
+    {
+        if ($date === null) {
+            return 'unknown date';
+        }
+
+        try {
+            return (new DateTime($date))->format('Y-m-d H:i');
+        } catch (Exception) {
+            return $date;
+        }
     }
 }

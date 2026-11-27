@@ -30,6 +30,20 @@ if (! function_exists('storage_path')) {
     }
 }
 
+if (! function_exists('app_path')) {
+    function app_path(string $path = ''): string
+    {
+        return sys_get_temp_dir() . '/tailor-test-app/' . ltrim($path, '/');
+    }
+}
+
+if (! function_exists('base_path')) {
+    function base_path(string $path = ''): string
+    {
+        return dirname(__DIR__) . ($path !== '' ? '/' . ltrim($path, '/') : '');
+    }
+}
+
 if (! function_exists('config')) {
     /**
      * @var array<string, mixed>
@@ -51,6 +65,9 @@ if (! function_exists('config')) {
             return null;
         }
 
-        return $testConfig[$key] ?? $default;
+        static $defaults = null;
+        $defaults ??= ['tailor' => require __DIR__ . '/../config/tailor.php'];
+
+        return $testConfig[$key] ?? Illuminate\Support\Arr::get($defaults, $key, $default);
     }
 }

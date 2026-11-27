@@ -135,3 +135,50 @@ test('deletes session with valid name format', function () {
         expect($tester->getStatusCode())->toBe(0);
     }
 });
+
+test('deletes session when user confirms', function () {
+    $this->sessionManager
+        ->shouldReceive('exists')
+        ->with('test-session')
+        ->andReturn(true);
+
+    $this->sessionManager
+        ->shouldReceive('delete')
+        ->once()
+        ->andReturn(true);
+
+    $this->tester->setInputs(['y']);
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getStatusCode())->toBe(0)
+        ->and($this->tester->getDisplay())->toContain("Session 'test-session' deleted successfully");
+});
+
+test('cancels delete when user declines', function () {
+    $this->sessionManager
+        ->shouldReceive('exists')
+        ->with('test-session')
+        ->andReturn(true);
+
+    $this->sessionManager->shouldNotReceive('delete');
+
+    $this->tester->setInputs(['n']);
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getStatusCode())->toBe(0)
+        ->and($this->tester->getDisplay())->toContain('Delete cancelled.');
+});
+
+test('cancels delete when input ends without an answer', function () {
+    $this->sessionManager
+        ->shouldReceive('exists')
+        ->with('test-session')
+        ->andReturn(true);
+
+    $this->sessionManager->shouldNotReceive('delete');
+
+    $this->tester->execute(['name' => 'test-session']);
+
+    expect($this->tester->getStatusCode())->toBe(0)
+        ->and($this->tester->getDisplay())->toContain('Delete cancelled.');
+});

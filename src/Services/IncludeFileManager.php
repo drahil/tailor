@@ -16,10 +16,10 @@ class IncludeFileManager
     public function createIncludeFile(array $useStatements): string
     {
         $content = "<?php\n\n" . implode("\n", $useStatements) . "\n";
-        $tempFile = sys_get_temp_dir() . '/tailor_imports_' . uniqid() . '.php';
+        $tempFile = @tempnam(sys_get_temp_dir(), 'tailor_imports_');
 
-        if (@file_put_contents($tempFile, $content) === false) {
-            throw new RuntimeException('Failed to create include file at: ' . $tempFile);
+        if ($tempFile === false || @file_put_contents($tempFile, $content) === false) {
+            throw new RuntimeException('Failed to create include file in: ' . sys_get_temp_dir());
         }
 
         return $tempFile;

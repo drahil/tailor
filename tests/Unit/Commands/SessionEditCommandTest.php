@@ -37,9 +37,7 @@ test('updates session description', function () {
             description: SessionDescription::from('Old description'),
             tags: ['api']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -76,9 +74,7 @@ test('adds tags to session', function () {
             name: SessionName::from('test-session'),
             tags: ['api']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -116,9 +112,7 @@ test('removes tags from session', function () {
             name: SessionName::from('test-session'),
             tags: ['api', 'debug', 'testing']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -153,9 +147,7 @@ test('replaces all tags with set-tags option', function () {
             name: SessionName::from('test-session'),
             tags: ['old1', 'old2']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -187,9 +179,7 @@ test('set-tags takes precedence over add-tag and remove-tag', function () {
             name: SessionName::from('test-session'),
             tags: ['original']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -224,9 +214,7 @@ test('updates both description and tags', function () {
             description: SessionDescription::from('Old'),
             tags: ['old']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -285,9 +273,7 @@ test('fails with error when tag is invalid', function () {
         metadata: new SessionMetadata(
             name: SessionName::from('test-session')
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -311,9 +297,7 @@ test('shows message when no changes specified', function () {
         metadata: new SessionMetadata(
             name: SessionName::from('test-session')
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -341,9 +325,7 @@ test('preserves created_at timestamp when updating', function () {
             tags: ['old'],
             createdAt: $createdAt
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -375,9 +357,7 @@ test('removes duplicates when adding tags', function () {
             name: SessionName::from('test-session'),
             tags: ['api']
         ),
-        commands: [['code' => 'test']],
-        variables: [],
-        sessionMetadata: ['total_commands' => 1, 'duration_seconds' => 0.0, 'project_path' => '', 'started_at' => null]
+        commands: ['test'],
     );
 
     $this->sessionManager
@@ -406,4 +386,44 @@ test('removes duplicates when adding tags', function () {
     expect($updatedData->metadata->tags)->toHaveCount(2)
         ->and($updatedData->metadata->tags)->toContain('api')
         ->and($updatedData->metadata->tags)->toContain('debug');
+});
+
+test('does not shadow the PsySH edit command', function () {
+    expect($this->command->getAliases())->not->toContain('edit');
+});
+
+function editTagsOf(array $tags, array $options): ?SessionData
+{
+    $sessionData = new SessionData(
+        metadata: new SessionMetadata(name: SessionName::from('test-session'), tags: $tags),
+        commands: ['test'],
+    );
+
+    test()->sessionManager->shouldReceive('exists')->andReturn(true);
+    test()->sessionManager->shouldReceive('load')->andReturn($sessionData);
+
+    $updatedData = null;
+    test()->sessionManager
+        ->shouldReceive('update')
+        ->with(Mockery::on(function ($data) use (&$updatedData) {
+            $updatedData = $data;
+            return true;
+        }));
+
+    test()->tester->execute(['name' => 'test-session', ...$options]);
+
+    return $updatedData;
+}
+
+test('removes tags case-insensitively', function () {
+    expect(editTagsOf(['api', 'debug'], ['--remove-tag' => ['API']])?->metadata->tags)->toBe(['debug']);
+});
+
+test('adding an existing tag in another case is not a change', function () {
+    expect(editTagsOf(['api'], ['--add-tag' => ['API']]))->toBeNull()
+        ->and($this->tester->getDisplay())->toContain('No changes specified');
+});
+
+test('splits comma-separated tags in set-tags', function () {
+    expect(editTagsOf(['old'], ['--set-tags' => ['api,debug']])?->metadata->tags)->toBe(['api', 'debug']);
 });

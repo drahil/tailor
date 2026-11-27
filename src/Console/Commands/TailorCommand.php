@@ -8,6 +8,7 @@ use drahil\Tailor\Services\ClassAutoImporter;
 use drahil\Tailor\Services\IncludeFileManager;
 use drahil\Tailor\Services\TailorShellBuilder;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -23,23 +24,30 @@ class TailorCommand extends Command
 
     public function configure(): void
     {
-        $this->setDescription('Enhanced Laravel Tinker with session management and auto-imported classes');
+        $this
+            ->setDescription('A Laravel REPL with saved sessions, auto-imported classes and Eloquent-aware autocomplete')
+            ->addArgument('include', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'PHP files to run before the shell opens');
     }
 
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $importResult = $this->autoImporter->prepare($output);
+        $includes = $input->getArgument('include');
 
-        if (! $importResult->isSuccessful()) {
-            return Command::FAILURE;
+        foreach ($includes as $file) {
+            if (! is_file($file)) {
+                $output->writeln("<error>File not found: {$file}</error>");
+                return Command::FAILURE;
+            }
         }
 
-        $shell = $this->shellBuilder->build($importResult);
+        $importResult = $this->autoImporter->prepare($output);
 
-        $shell->run();
-
-        if ($importResult->hasIncludeFile()) {
-            $this->fileManager->cleanup($importResult->getIncludeFile());
+        try {
+            $this->shellBuilder->build($importResult, $includes)->run();
+        } finally {
+            if ($importResult->hasIncludeFile()) {
+                $this->fileManager->cleanup($importResult->getIncludeFile());
+            }
         }
 
         return Command::SUCCESS;

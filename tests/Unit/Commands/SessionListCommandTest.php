@@ -43,7 +43,7 @@ test('lists sessions with metadata', function () {
     $sessions = [
         [
             'name' => 'test-session',
-            'created_at' => '2025-01-15 10:00:00',
+            'created_at' => '2025-01-15T10:00:00+00:00',
             'command_count' => 5,
         ],
         [
@@ -65,10 +65,11 @@ test('lists sessions with metadata', function () {
     $output = $this->tester->getDisplay();
     expect($output)->toContain('Saved Sessions:')
         ->and($output)->toContain('test-session')
-        ->and($output)->toContain('2025-01-15 10:00:00')
+        ->and($output)->toContain('2025-01-15 10:00 (5 commands)')
+        ->and($output)->not->toContain('T10:00')
         ->and($output)->toContain('5 commands')
         ->and($output)->toContain('another-session')
-        ->and($output)->toContain('2025-01-16 14:30:00')
+        ->and($output)->toContain('2025-01-16 14:30 (10 commands)')
         ->and($output)->toContain('10 commands');
 });
 
@@ -91,4 +92,15 @@ test('formats output correctly for single session', function () {
     expect($this->tester->getStatusCode())->toBe(0)
         ->and($this->tester->getDisplay())->toContain('my-session')
         ->and($this->tester->getDisplay())->toContain('3 commands');
+});
+
+test('uses singular for a session with one command', function () {
+    $this->sessionManager
+        ->shouldReceive('list')
+        ->once()
+        ->andReturn([['name' => 'tiny', 'created_at' => '2025-01-15T10:00:00+00:00', 'command_count' => 1]]);
+
+    $this->tester->execute([]);
+
+    expect($this->tester->getDisplay())->toContain('(1 command)');
 });

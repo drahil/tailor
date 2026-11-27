@@ -22,7 +22,7 @@ class SessionDeleteCommand extends SessionCommand
                 <<<HELP
   Delete a previously saved Tailor session by name.
   You will be prompted for confirmation unless the --force flag is used.
-  You can list available sessions with the 'session:list' command.
+  You can list available sessions with the 'session:ls' command.
 
   Usage:
     session:delete my-session                   Delete session with confirmation
@@ -62,7 +62,7 @@ class SessionDeleteCommand extends SessionCommand
 
         $force = $input->getOption('force');
         if (! $force) {
-            if (! $this->confirm($output, "Are you sure you want to delete session '{$sessionName}'?")) {
+            if (! $this->confirm($input, $output, "Are you sure you want to delete session '{$sessionName}'?")) {
                 $output->writeln('<info>Delete cancelled.</info>');
                 return 0;
             }

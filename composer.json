@@ -1,6 +1,6 @@
 {
     "name": "drahil/tailor",
-    "description": "Enhanced Laravel Tinker with session management, code export, and smart autocomplete",
+    "description": "A Laravel REPL with saved sessions, code export and Eloquent-aware autocomplete",
     "keywords": ["laravel", "tinker", "repl", "psysh", "session", "development"],
     "type": "library",
     "license": "MIT",
@@ -12,14 +12,20 @@
     ],
     "require": {
         "php": "^8.2",
-        "symfony/console": "^7.3",
-        "psy/psysh": "^0.12.12"
+        "symfony/console": "^7.3 || ^8.0",
+        "psy/psysh": "^0.12.22",
+        "symfony/finder": "^7.0 || ^8.0",
+        "symfony/var-dumper": "^7.0 || ^8.0",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+        "nikic/php-parser": "^5.0"
     },
     "require-dev": {
-        "pestphp/pest": "^2.0",
+        "pestphp/pest": "^3.0 || ^4.0",
         "phpstan/phpstan": "^2.1",
-        "mockery/mockery": "^1.6",
-        "dg/bypass-finals": "^1.9"
+        "mockery/mockery": "^1.6.12",
+        "dg/bypass-finals": "^1.9",
+        "illuminate/filesystem": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/database": "^11.0 || ^12.0 || ^13.0"
     },
     "autoload": {
         "psr-4": {

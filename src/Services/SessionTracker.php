@@ -4,191 +4,68 @@ declare(strict_types=1);
 
 namespace drahil\Tailor\Services;
 
-use DateTime;
-use DateTimeInterface;
-use Illuminate\Contracts\Container\Singleton;
-use Throwable;
-
-#[Singleton]
 class SessionTracker
 {
     /**
-     * Commands executed in the current session.
+     * Commands entered in this process.
      *
-     * @var array<int, array{code: string, output: string|null, timestamp: string, order: int}>
+     * @var array<int, string>
      */
     protected array $commands = [];
 
     /**
-     * Variables in the current scope.
-     *
-     * @var array<string, array{type: string, class: string|null, value: string|null}>
+     * Saved session that new commands are appended to.
      */
-    protected array $variables = [];
+    protected ?string $activeSession = null;
 
     /**
-     * Session start time.
-     *
-     * @var DateTimeInterface|null
+     * Index in $commands from which session:append collects commands.
      */
-    protected ?DateTimeInterface $startedAt = null;
+    protected int $appendStart = 0;
 
-    /**
-     * Line number in history file where this session started.
-     *
-     * @var int
-     */
-    protected int $sessionStartLine = 0;
-
-    /**
-     * Create a new SessionTracker instance.
-     */
-    public function __construct()
+    public function setActiveSession(?string $name): void
     {
-        $this->startedAt = new DateTime();
+        $this->activeSession = $name;
+    }
+
+    public function getActiveSession(): ?string
+    {
+        return $this->activeSession;
+    }
+
+    public function markAppendStart(): void
+    {
+        $this->appendStart = count($this->commands);
     }
 
     /**
-     * Set the line number in history file where this session started.
-     *
-     * @param int $line
-     * @return void
+     * @return array<int, string>
      */
-    public function setSessionStartLine(int $line): void
+    public function getCommandsSinceAppendStart(): array
     {
-        $this->sessionStartLine = $line;
+        return array_slice($this->commands, $this->appendStart);
+    }
+
+    public function addCommand(string $code): void
+    {
+        $this->commands[] = $code;
     }
 
     /**
-     * Get the line number where this session started.
-     *
-     * @return int
-     */
-    public function getSessionStartLine(): int
-    {
-        return $this->sessionStartLine;
-    }
-
-    /**
-     * Add a command to the tracker.
-     *
-     * @param string $code The code that was executed
-     * @param mixed $output The output from executing the code (optional)
-     * @return void
-     */
-    public function addCommand(string $code, mixed $output = null): void
-    {
-        $this->commands[] = [
-            'code' => $code,
-            'output' => $this->serializeOutput($output),
-            'timestamp' => (new DateTime())->format('Y-m-d H:i:s'),
-            'order' => count($this->commands) + 1,
-        ];
-    }
-
-    /**
-     * Get all tracked commands.
-     *
-     * @return array<int, array{code: string, output: string|null, timestamp: string, order: int}>
+     * @return array<int, string>
      */
     public function getCommands(): array
     {
         return $this->commands;
     }
 
-    /**
-     * Get the total number of commands tracked.
-     *
-     * @return int
-     */
     public function getCommandCount(): int
     {
         return count($this->commands);
     }
 
-    /**
-     * Clear all tracked commands.
-     *
-     * @return void
-     */
-    public function clear(): void
-    {
-        $this->commands = [];
-        $this->variables = [];
-        $this->startedAt = new DateTime();
-    }
-
-    /**
-     * Get all tracked variables.
-     *
-     * @return array<string, array{type: string, class: string|null, value: string|null}>
-     */
-    public function getVariables(): array
-    {
-        return $this->variables;
-    }
-
-    /**
-     * Get session start time.
-     *
-     * @return DateTimeInterface|null
-     */
-    public function getStartedAt(): ?DateTimeInterface
-    {
-        return $this->startedAt;
-    }
-
-    /**
-     * Get session duration in seconds.
-     *
-     * @return int
-     */
-    public function getDuration(): int
-    {
-        if (! $this->startedAt) {
-            return 0;
-        }
-
-        return (new DateTime())->getTimestamp() - $this->startedAt->getTimestamp();
-    }
-
-    /**
-     * Serialize output for storage.
-     *
-     * @param mixed $output
-     * @return string|null
-     */
-    protected function serializeOutput(mixed $output): ?string
-    {
-        if ($output === null) {
-            return null;
-        }
-
-        try {
-            if (is_object($output)) {
-                if (method_exists($output, '__toString')) {
-                    return (string) $output;
-                }
-                return get_class($output) . ' Object';
-            }
-
-            if (is_array($output) || is_scalar($output)) {
-                return json_encode($output, JSON_PRETTY_PRINT);
-            }
-
-            return var_export($output, true);
-        } catch (Throwable $e) {
-            return 'Unable to serialize output';
-        }
-    }
-
-    /**
-     * Check if the tracker has any commands.
-     *
-     * @return bool
-     */
     public function hasCommands(): bool
     {
-        return $this->getCommandCount() > 0;
+        return $this->commands !== [];
     }
 }

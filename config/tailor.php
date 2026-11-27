@@ -7,13 +7,12 @@ return [
     | Storage Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure where Tailor stores sessions and exported code.
+    | Configure where Tailor stores sessions.
     |
     */
 
     'storage' => [
         'sessions' => storage_path('tailor/sessions'),
-        'exports' => storage_path('tailor/exports'),
     ],
 
     /*
@@ -35,14 +34,13 @@ return [
     | Export Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure default export behavior.
+    | Where session:export writes Artisan commands. The namespace follows the
+    | folder, using Composer's PSR-4 autoload map.
     |
     */
 
     'export' => [
-        'default_format' => 'php',
-        'namespace' => 'App\\Scripts',
-        'open_after_export' => false,
+        'path' => app_path('Console/Commands'),
     ],
 
     /*
@@ -50,14 +48,12 @@ return [
     | Autocomplete Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure autocomplete behavior.
+    | Turn Tab completion on or off.
     |
     */
 
     'autocomplete' => [
         'enabled' => true,
-        'cache_models' => true,
-        'cache_ttl' => 3600, // 1 hour
     ],
 
     /*
@@ -73,6 +69,20 @@ return [
         'auto_save' => false,
         'auto_save_interval' => 300, // 5 minutes
         'auto_save_min_commands' => 5, // Minimum commands before auto-save
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Configuration
+    |--------------------------------------------------------------------------
+    |
+    | In production, session:execute asks for confirmation before running a
+    | session unless the session has this tag.
+    |
+    */
+
+    'production' => [
+        'safe_tag' => 'safe-for-prod',
     ],
 
     /*

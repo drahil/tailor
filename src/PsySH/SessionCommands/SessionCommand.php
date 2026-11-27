@@ -8,6 +8,8 @@ use drahil\Tailor\Services\SessionManager;
 use drahil\Tailor\Support\Validation\ValidationException;
 use drahil\Tailor\Support\ValueObjects\SessionName;
 use Psy\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -71,21 +73,21 @@ abstract class SessionCommand extends Command
     /**
      * Prompt the user for a yes/no confirmation.
      *
-     * @param OutputInterface $output The output interface
-     * @param string $question The question to ask the user
      * @return bool True if the user confirms (y/yes), false otherwise
      */
-    protected function confirm(OutputInterface $output, string $question): bool
+    protected function confirm(InputInterface $input, OutputInterface $output, string $question): bool
     {
         $output->write("<question>{$question} [y/N]</question> ");
 
-        $handle = fopen('php://stdin', 'r');
-        $line = fgets($handle);
-        fclose($handle);
+        $stream = $input instanceof StreamableInputInterface ? $input->getStream() : null;
+        $line = fgets($stream ?? STDIN);
 
-        $answer = trim(strtolower($line));
+        if ($line === false) {
+            $output->writeln('');
+            return false;
+        }
 
-        return in_array($answer, ['y', 'yes'], true);
+        return in_array(strtolower(trim($line)), ['y', 'yes'], true);
     }
 
     /**
@@ -105,37 +107,13 @@ abstract class SessionCommand extends Command
         bool $required = true
     ): ?SessionName {
         try {
-            $sessionName = $required
-                ? SessionName::from($nameInput)
+            return $required
+                ? SessionName::from($nameInput ?? '')
                 : SessionName::fromNullable($nameInput);
-
-            if (! $sessionName && $required) {
-                $output->writeln('<error>Session name must be provided.</error>');
-                return null;
-            }
-
-            return $sessionName;
         } catch (ValidationException $e) {
             $output->writeln("<error>{$e->result->firstError()}</error>");
             return null;
         }
     }
 
-    /**
-     * Decode command code from storage format.
-     *
-     * Handles URL encoding and escape sequences used in history storage.
-     *
-     * @param string $code The encoded command code
-     * @return string The decoded command code
-     */
-    protected function decodeCommandCode(string $code): string
-    {
-        if (str_contains($code, '\\0') || str_contains($code, '\\1')) {
-            return stripcslashes($code);
-        }
-
-        $decoded = urldecode($code);
-        return $decoded !== $code ? $decoded : $code;
-    }
 }

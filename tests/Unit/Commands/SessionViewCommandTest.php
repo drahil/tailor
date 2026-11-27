@@ -39,10 +39,8 @@ test('displays session details successfully', function () {
             name: SessionName::from('test-session'),
         ),
         commands: [
-            ['code' => 'echo "test"', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
+            'echo "test"',
         ],
-        variables: [],
-        sessionMetadata: []
     );
 
     $this->sessionManager
@@ -63,52 +61,10 @@ test('displays session details successfully', function () {
         ->shouldReceive('displayCommands')
         ->once();
 
-    $this->formatter
-        ->shouldReceive('displayVariables')
-        ->never();
-
     $this->tester->execute(['name' => 'test-session']);
 
     expect($this->tester->getStatusCode())->toBe(0)
         ->and($this->tester->getDisplay())->toContain('Session: test-session');
-});
-
-test('displays variables when session has variables', function () {
-    $sessionData = new SessionData(
-        metadata: new SessionMetadata(
-            name: SessionName::from('test-session'),
-        ),
-        commands: [],
-        variables: [
-            'foo' => ['type' => 'string', 'class' => null, 'value' => 'bar'],
-        ],
-        sessionMetadata: []
-    );
-
-    $this->sessionManager
-        ->shouldReceive('exists')
-        ->andReturn(true);
-
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayMetadata')
-        ->once();
-
-    $this->formatter
-        ->shouldReceive('displayCommands')
-        ->once();
-
-    $this->formatter
-        ->shouldReceive('displayVariables')
-        ->once()
-        ->with(Mockery::any(), ['foo' => ['type' => 'string', 'class' => null, 'value' => 'bar']]);
-
-    $this->tester->execute(['name' => 'test-session']);
-
-    expect($this->tester->getStatusCode())->toBe(0);
 });
 
 test('displays error when session does not exist', function () {
@@ -146,38 +102,3 @@ test('handles load operation errors gracefully', function () {
         ->and($this->tester->getDisplay())->toContain('Failed to view session');
 });
 
-test('decodes command code correctly when displaying', function () {
-    $sessionData = new SessionData(
-        metadata: new SessionMetadata(
-            name: SessionName::from('test-session'),
-        ),
-        commands: [
-            ['code' => 'echo+%22test%22', 'output' => null, 'timestamp' => '2025-01-15 10:00:00', 'order' => 1],
-        ],
-        variables: [],
-        sessionMetadata: []
-    );
-
-    $this->sessionManager
-        ->shouldReceive('exists')
-        ->andReturn(true);
-
-    $this->sessionManager
-        ->shouldReceive('load')
-        ->andReturn($sessionData);
-
-    $this->formatter
-        ->shouldReceive('displayMetadata')
-        ->once();
-
-    $this->formatter
-        ->shouldReceive('displayCommands')
-        ->once()
-        ->withArgs(function ($output, $data, $decoder) use ($sessionData) {
-            return $data === $sessionData && is_callable($decoder);
-        });
-
-    $this->tester->execute(['name' => 'test-session']);
-
-    expect($this->tester->getStatusCode())->toBe(0);
-});

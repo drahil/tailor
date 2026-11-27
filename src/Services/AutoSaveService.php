@@ -15,29 +15,33 @@ class AutoSaveService
 
     protected bool $hasAutoSaved = false;
 
+    protected int $lastSavedCommandCount = 0;
+
+    protected int $lastSavedAt;
+
     public function __construct(
         protected SessionManager $sessionManager,
         protected SessionTracker $sessionTracker,
-        protected HistoryCaptureService $historyCaptureService,
     ) {
+        $this->lastSavedAt = time();
     }
 
     public function shouldAutoSave(): bool
     {
-        if (! config('tailor.session.auto_save', false)) {
+        if (! config('tailor.session.auto_save')) {
             return false;
         }
 
-        $minCommands = config('tailor.session.auto_save_min_commands', 5);
-        $maxInterval = config('tailor.session.auto_save_interval', 300);
+        $minCommands = config('tailor.session.auto_save_min_commands');
+        $maxInterval = config('tailor.session.auto_save_interval');
 
-        $historyFile = storage_path('tailor/tailor_history');
-        $this->historyCaptureService->captureHistoryToTracker($this->sessionTracker, $historyFile);
+        $unsavedCommands = $this->sessionTracker->getCommandCount() - $this->lastSavedCommandCount;
 
-        $commandCount = $this->sessionTracker->getCommandCount();
-        $duration = $this->sessionTracker->getDuration();
+        if ($unsavedCommands <= 0) {
+            return false;
+        }
 
-        return $commandCount >= $minCommands || $duration >= $maxInterval;
+        return $unsavedCommands >= $minCommands || time() - $this->lastSavedAt >= $maxInterval;
     }
 
     public function performAutoSave(): void
@@ -56,12 +60,12 @@ class AutoSaveService
             tags: ['auto-saved'],
             createdAt: new DateTime(),
             updatedAt: new DateTime(),
-            laravelVersion: app()->version(),
-            phpVersion: PHP_VERSION,
         );
 
         $this->sessionManager->save($metadata, $this->sessionTracker);
         $this->hasAutoSaved = true;
+        $this->lastSavedCommandCount = $this->sessionTracker->getCommandCount();
+        $this->lastSavedAt = time();
     }
 
     public function hasAutoSaved(): bool
