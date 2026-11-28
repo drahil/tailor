@@ -102,7 +102,6 @@ class TailorShellBuilder
     {
         $reflection = new ReflectionClass($shell);
         $contextProperty = $reflection->getProperty('context');
-        $contextProperty->setAccessible(true);
         $context = $contextProperty->getValue($shell);
         $autoCompleter->setContext($context);
     }
@@ -163,7 +162,6 @@ class TailorShellBuilder
 
         $reflection = new ReflectionClass($shell);
         $property = $reflection->getProperty('loopListeners');
-        $property->setAccessible(true);
 
         $listeners = $property->getValue($shell);
         $listeners[] = $listener;
